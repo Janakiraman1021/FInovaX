@@ -81,6 +81,8 @@ export interface UploadedInvoice {
     currency: string;
     description?: string;
     originalFileName?: string;
+    /** Blockchain tx hash from on-chain registration; null until registered */
+    blockchainTxHash: string | null;
     createdAt: string;
 }
 
@@ -138,6 +140,19 @@ export interface MSMEProfilePayload {
     address?: string;
 }
 
+export const blockchainAPI = {
+    /** POST /api/v1/blockchain/register-invoice — explicit on-chain anchor */
+    registerInvoice: (token: string, invoiceId: string) =>
+        apiRequest<{ success: boolean; message: string; data: { invoiceId: string; invoiceHash: string; blockchainTxHash: string } }>(
+            "/api/v1/blockchain/register-invoice",
+            {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ invoiceId }),
+            }
+        ),
+};
+
 export const msmeProfileAPI = {
     /** GET /api/msme-profile — get current user's profile */
     getProfile: (token: string) =>
@@ -192,6 +207,7 @@ export interface LenderInvoice {
     uploadedBy: { _id: string; name: string; email: string; organization: string };
     financedBy: { _id: string; name: string; email: string; organization: string } | null;
     financedAt: string | null;
+    blockchainTxHash: string | null;
     financeTxHash: string | null;
     createdAt: string;
 }

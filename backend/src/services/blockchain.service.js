@@ -58,6 +58,25 @@ const toBytes32 = (hexHash) => {
 };
 
 /**
+ * Fetch live EIP-1559 fee data and apply a 30 % bump so the tx can always
+ * replace any stuck pending transaction from this wallet.
+ */
+const getGasOverrides = async () => {
+    const feeData = await provider.getFeeData();
+    // Apply 30 % premium (use BigInt arithmetic)
+    const bump = (val) => val != null ? val * 130n / 100n : undefined;
+    const overrides = {};
+    if (feeData.maxFeePerGas != null) {
+        overrides.maxFeePerGas         = bump(feeData.maxFeePerGas);
+        overrides.maxPriorityFeePerGas = bump(feeData.maxPriorityFeePerGas ?? feeData.maxFeePerGas / 10n);
+    } else if (feeData.gasPrice != null) {
+        // Legacy network fallback
+        overrides.gasPrice = bump(feeData.gasPrice);
+    }
+    return overrides;
+};
+
+/**
  * Register an invoice hash on the blockchain.
  * @param {string} fileHash - SHA-256 hex hash of the invoice file.
  * @param {string} invoiceId - Invoice identifier (emitted in event only, not stored on-chain).
@@ -70,7 +89,8 @@ const registerInvoiceOnChain = async (fileHash, invoiceId) => {
 
     try {
         const hashBytes = toBytes32(fileHash);
-        const tx = await contract.registerInvoice(hashBytes, invoiceId);
+        const overrides = await getGasOverrides();
+        const tx = await contract.registerInvoice(hashBytes, invoiceId, overrides);
         const receipt = await tx.wait();
 
         console.log(`✅ Invoice registered on-chain: ${receipt.hash}`);
@@ -94,7 +114,8 @@ const markInvoiceFinancedOnChain = async (fileHash) => {
 
     try {
         const hashBytes = toBytes32(fileHash);
-        const tx = await contract.financeInvoice(hashBytes);
+        const overrides = await getGasOverrides();
+        const tx = await contract.financeInvoice(hashBytes, overrides);
         const receipt = await tx.wait();
 
         console.log(`✅ Invoice marked financed on-chain: ${receipt.hash}`);
@@ -148,7 +169,8 @@ const registerReceivableOnChain = async (fingerprint) => {
 
     try {
         const hashBytes = toBytes32(fingerprint);
-        const tx = await contract.registerReceivable(hashBytes);
+        const overrides = await getGasOverrides();
+        const tx = await contract.registerReceivable(hashBytes, overrides);
         const receipt = await tx.wait();
 
         console.log(`✅ Receivable registered on-chain: ${receipt.hash}`);
@@ -193,7 +215,8 @@ const markReceivableFinancedOnChain = async (fingerprint) => {
 
     try {
         const hashBytes = toBytes32(fingerprint);
-        const tx = await contract.financeReceivable(hashBytes);
+        const overrides = await getGasOverrides();
+        const tx = await contract.financeReceivable(hashBytes, overrides);
         const receipt = await tx.wait();
 
         console.log(`✅ Receivable marked financed on-chain: ${receipt.hash}`);

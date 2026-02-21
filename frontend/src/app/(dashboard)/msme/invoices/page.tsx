@@ -1,12 +1,15 @@
 ﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { invoiceAPI, UploadedInvoice } from "@/lib/api";
+import { invoiceAPI, blockchainAPI, UploadedInvoice } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { ExternalLink, FileText, Search, RefreshCw, AlertCircle, Copy, Check } from "lucide-react";
+import { ExternalLink, FileText, Search, RefreshCw, AlertCircle, Copy, Check, Link2, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
+
+const ETHERSCAN = "https://sepolia.etherscan.io/tx/";
 
 type StatusFilter = "ALL" | "UPLOADED" | "FINANCED" | "BLOCKED";
 
@@ -24,12 +27,33 @@ export default function MSMEInvoicesPage() {
     const [query, setQuery]       = useState("");
     const [filter, setFilter]     = useState<StatusFilter>("ALL");
     const [total, setTotal]       = useState(0);
-    const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [copiedId, setCopiedId]       = useState<string | null>(null);
+    const [registering, setRegistering] = useState<string | null>(null);  // invoiceId being registered
 
     const copyToClipboard = (text: string, id: string) => {
         navigator.clipboard.writeText(text);
         setCopiedId(id);
         setTimeout(() => setCopiedId(null), 2000);
+    };
+
+    const handleRegisterOnChain = async (inv: UploadedInvoice) => {
+        const token = localStorage.getItem("finovax-token") ?? "";
+        if (!token || token.startsWith("mock.")) { toast.error("Real account required."); return; }
+        setRegistering(inv.invoiceId);
+        try {
+            const res = await blockchainAPI.registerInvoice(token, inv.invoiceId);
+            toast.success("Registered on-chain!", { description: res.data.blockchainTxHash.slice(0, 20) + "…" });
+            // Patch local state so the row updates immediately without re-fetch
+            setInvoices(prev => prev.map(i =>
+                i.invoiceId === inv.invoiceId
+                    ? { ...i, blockchainTxHash: res.data.blockchainTxHash }
+                    : i
+            ));
+        } catch (err: unknown) {
+            toast.error("Registration failed", { description: err instanceof Error ? err.message : "Unknown error" });
+        } finally {
+            setRegistering(null);
+        }
     };
 
     const fetchInvoices = useCallback(async () => {
@@ -121,21 +145,21 @@ export default function MSMEInvoicesPage() {
                     <table className="w-full mg-table">
                         <thead>
                             <tr>
-                                {["Invoice ID", "Description", "Amount", "Date", "Status", "CID", "IPFS"].map(h => (
+                                {["Invoice ID", "Description", "Amount", "Date", "Status", "CID", "IPFS", "On-Chain"].map(h => (
                                     <th key={h} className="text-left">{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr><td colSpan={6} className="py-16 text-center">
+                                <tr><td colSpan={8} className="py-16 text-center">
                                     <div className="flex flex-col items-center gap-3">
                                         <div className="w-7 h-7 rounded-full border-2 border-mg-dim border-t-mg-lavender animate-spin" />
                                         <span className="text-xs text-mg-dim animate-pulse">Fetching invoices…</span>
                                     </div>
                                 </td></tr>
                             ) : filtered.length === 0 ? (
-                                <tr><td colSpan={6} className="py-16 text-center">
+                                <tr><td colSpan={8} className="py-16 text-center">
                                     <div className="flex flex-col items-center gap-3 text-mg-dim">
                                         <FileText className="w-8 h-8 opacity-40" />
                                         <span className="text-sm italic">
@@ -194,6 +218,40 @@ export default function MSMEInvoicesPage() {
                                                 <ExternalLink className="w-3.5 h-3.5" />
                                             </a>
                                         ) : <span className="text-mg-dim text-xs">—</span>}
+                                    </td>
+                                    {/* On-Chain column */}
+                                    <td>
+                                        {inv.blockchainTxHash ? (
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                                                    style={{ background: "rgba(5,150,105,0.12)", color: "#10b981", border: "1px solid rgba(5,150,105,0.25)" }}>
+                                                    <Link2 className="w-2.5 h-2.5" /> Anchored
+                                                </span>
+                                                <button onClick={() => copyToClipboard(inv.blockchainTxHash!, inv.invoiceId + "-tx")}
+                                                    title={"Copy TX: " + inv.blockchainTxHash}
+                                                    className="p-1 rounded hover:bg-mg-elevated transition-colors">
+                                                    {copiedId === inv.invoiceId + "-tx"
+                                                        ? <Check className="w-3 h-3 text-status-success" />
+                                                        : <Copy className="w-3 h-3 text-mg-dim hover:text-mg-lavender" />}
+                                                </button>
+                                                <a href={`${ETHERSCAN}${inv.blockchainTxHash}`} target="_blank" rel="noopener noreferrer"
+                                                    title="View on Etherscan"
+                                                    className="p-1 rounded hover:bg-mg-elevated transition-colors inline-flex">
+                                                    <ExternalLink className="w-3 h-3 text-mg-dim hover:text-mg-cosmic" />
+                                                </a>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleRegisterOnChain(inv)}
+                                                disabled={registering === inv.invoiceId}
+                                                title="Register this invoice hash on Sepolia"
+                                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all disabled:opacity-60 hover:-translate-y-0.5"
+                                                style={{ background: "rgba(74,78,143,0.12)", color: "#a5b4fc", border: "1px solid rgba(74,78,143,0.25)" }}>
+                                                {registering === inv.invoiceId
+                                                    ? <><Loader2 className="w-3 h-3 animate-spin" /> Anchoring…</>
+                                                    : <><Link2 className="w-3 h-3" /> Register On-Chain</>}
+                                            </button>
+                                        )}
                                     </td>
                                 </motion.tr>
                             ))}

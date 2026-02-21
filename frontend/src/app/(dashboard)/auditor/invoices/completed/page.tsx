@@ -1,37 +1,69 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { Invoice } from "@/lib/mock/mockInvoices";
+import { useEffect, useState, useCallback } from "react";
+import { auditorAPI, LenderInvoice } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { CheckCircle, Search } from "lucide-react";
+import { CheckCircle, Search, RefreshCw, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
+const DONE_STATUSES = ["FINANCED", "BLOCKED"];
+
 export default function AuditorCompletedInvoices() {
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [invoices, setInvoices] = useState<LenderInvoice[]>([]);
     const [query, setQuery]       = useState("");
     const [loading, setLoading]   = useState(true);
+    const [error, setError]       = useState("");
 
-    useEffect(() => {
-        api.invoices.getAll().then(data => {
-            setInvoices(data.filter(i => ["VERIFIED", "FINANCED", "FRAUD_ALERT"].includes(i.status)));
+    const fetchInvoices = useCallback(async () => {
+        setLoading(true);
+        setError("");
+        try {
+            const token = localStorage.getItem("finovax-token") ?? "";
+            const res = await auditorAPI.getAllInvoices(token, { limit: 200 });
+            setInvoices(res.data.invoices.filter(i => DONE_STATUSES.includes(i.status)));
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Failed to load invoices");
+        } finally {
             setLoading(false);
-        });
+        }
     }, []);
 
-    const filtered = invoices.filter(i => !query || i.id.toLowerCase().includes(query.toLowerCase()) || (i.borrower ?? "").toLowerCase().includes(query.toLowerCase()));
+    useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
+
+    const filtered = invoices.filter(inv =>
+        !query ||
+        inv.invoiceId.toLowerCase().includes(query.toLowerCase()) ||
+        (inv.uploadedBy?.organization ?? "").toLowerCase().includes(query.toLowerCase()) ||
+        (inv.financedBy?.organization ?? "").toLowerCase().includes(query.toLowerCase())
+    );
 
     return (
         <div className="space-y-8">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-                <p className="mg-label mb-1.5">Regulator View</p>
-                <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
-                    Completed <span className="mg-accent-text">Audits</span>
-                </h1>
-                <p className="text-sm text-mg-muted mt-1">Invoices that have been reviewed and actioned</p>
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+                <div>
+                    <p className="mg-label mb-1.5">Regulator View</p>
+                    <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
+                        Completed <span className="mg-accent-text">Audits</span>
+                    </h1>
+                    <p className="text-sm text-mg-muted mt-1">Invoices that have been financed or blocked</p>
+                </div>
+                <button onClick={fetchInvoices} disabled={loading}
+                    className="mg-btn-ghost border border-mg-lavender/20 px-3 py-2 rounded-xl text-mg-muted hover:text-mg-silver transition-colors flex items-center gap-1.5 text-sm disabled:opacity-40">
+                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+                    Refresh
+                </button>
             </motion.div>
+
+            {error && (
+                <div className="flex items-center gap-2 p-4 rounded-xl text-sm text-status-danger"
+                    style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.18)" }}>
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{error}</span>
+                    <button onClick={fetchInvoices} className="ml-auto text-xs underline">Retry</button>
+                </div>
+            )}
 
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mg-card rounded-2xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-mg-lavender/10 flex items-center justify-between gap-4">
@@ -39,29 +71,33 @@ export default function AuditorCompletedInvoices() {
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(5,150,105,0.10)", border: "1px solid rgba(5,150,105,0.22)" }}>
                             <CheckCircle className="w-4 h-4 text-status-success" />
                         </div>
-                        <p className="font-semibold text-mg-silver text-sm">{filtered.length} completed</p>
+                        <div>
+                            <p className="font-semibold text-mg-silver text-sm">Financed &amp; Blocked</p>
+                            <p className="text-[10px] text-mg-dim">{loading ? "Loading…" : `${filtered.length} completed`}</p>
+                        </div>
                     </div>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-mg-dim" />
-                        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search…" className="mg-input pl-8 text-sm w-48" />
+                        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search ID or org…" className="mg-input pl-8 text-sm w-52" />
                     </div>
                 </div>
                 <div className="overflow-x-auto">
                     {loading ? <div className="py-16 text-center text-mg-dim text-sm italic">Loading…</div>
-                    : filtered.length === 0 ? <div className="py-16 text-center"><CheckCircle className="w-10 h-10 text-mg-dim mx-auto mb-3" /><p className="text-sm text-mg-dim italic">No completed audits</p></div>
+                    : filtered.length === 0 ? <div className="py-16 text-center"><CheckCircle className="w-10 h-10 text-mg-dim mx-auto mb-3" /><p className="text-sm text-mg-dim italic">No completed invoices</p></div>
                     : (
                         <table className="w-full mg-table">
-                            <thead><tr><th>Invoice ID</th><th>Company</th><th>Amount</th><th>Date</th><th>Status</th><th>Detail</th></tr></thead>
+                            <thead><tr><th>Invoice ID</th><th>MSME</th><th>Lender</th><th>Amount</th><th>Date</th><th>Status</th><th>Detail</th></tr></thead>
                             <tbody>
                                 {filtered.map(inv => (
-                                    <tr key={inv.id}>
-                                        <td><span className="font-mono font-semibold text-mg-silver">{inv.id}</span></td>
-                                        <td>{inv.borrower}</td>
+                                    <tr key={inv._id}>
+                                        <td><span className="font-mono font-semibold text-mg-silver">{inv.invoiceId}</span></td>
+                                        <td>{inv.uploadedBy?.organization ?? "—"}</td>
+                                        <td>{inv.financedBy?.organization ?? "—"}</td>
                                         <td><span className="font-bold text-mg-cosmic">{formatCurrency(inv.amount)}</span></td>
-                                        <td>{formatDate(inv.timestamp)}</td>
+                                        <td>{formatDate(inv.financedAt ?? inv.createdAt)}</td>
                                         <td><StatusBadge status={inv.status} /></td>
                                         <td>
-                                            <Link href={`/auditor/invoices/completed/${inv.id}`}
+                                            <Link href={`/auditor/invoices/completed/${encodeURIComponent(inv.invoiceId)}`}
                                                 className="px-3 py-1 rounded-lg text-xs font-semibold bg-mg-elevated border border-mg-lavender/15 text-mg-cosmic hover:border-mg-cosmic/30 transition-colors">
                                                 View →
                                             </Link>
