@@ -1,5 +1,45 @@
 const AuditLog = require('../models/AuditLog');
 const AppError = require('../utils/AppError');
+const Invoice  = require('../models/Invoice');
+
+/**
+ * GET /audit/invoices
+ * Read-only list of all invoices. Auditor only.
+ */
+const getAllInvoices = async (req, res, next) => {
+    try {
+        const { page = 1, limit = 50, status } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const filter = {};
+        if (status) filter.status = status.toUpperCase();
+
+        const [invoices, total] = await Promise.all([
+            Invoice.find(filter)
+                .populate('uploadedBy', 'name email organization')
+                .populate('financedBy', 'name email organization')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit)),
+            Invoice.countDocuments(filter),
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                invoices,
+                pagination: {
+                    total,
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    totalPages: Math.ceil(total / parseInt(limit)),
+                },
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+};
 
 /**
  * GET /api/audit/logs
@@ -72,4 +112,4 @@ const getInvoiceAuditLogs = async (req, res, next) => {
     }
 };
 
-module.exports = { getAuditLogs, getInvoiceAuditLogs };
+module.exports = { getAllInvoices, getAuditLogs, getInvoiceAuditLogs };

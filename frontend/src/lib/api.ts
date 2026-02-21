@@ -168,6 +168,51 @@ export const lenderAPI = {
         ),
 };
 
+export interface AuditLog {
+    _id: string;
+    eventType: string;
+    performedBy: { _id: string; name: string; email: string; role: string } | null;
+    actorAddress: string | null;
+    invoiceId: { _id: string; invoiceId: string; amount: number; status: string } | null;
+    txHash: string | null;
+    details: Record<string, unknown>;
+    ipAddress: string | null;
+    createdAt: string;
+}
+
+export const auditorAPI = {
+    /** GET /audit/invoices — read-only list of all invoices */
+    getAllInvoices: (token: string, params?: { page?: number; limit?: number; status?: string }) => {
+        const qs = new URLSearchParams();
+        if (params?.page)   qs.set("page",   String(params.page));
+        if (params?.limit)  qs.set("limit",  String(params.limit));
+        if (params?.status) qs.set("status", params.status);
+        return apiRequest<{ success: boolean; data: { invoices: LenderInvoice[]; pagination: { total: number; page: number; totalPages: number } } }>(
+            `/audit/invoices${qs.toString() ? "?" + qs.toString() : ""}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+    },
+
+    /** GET /audit/system — paginated audit logs */
+    getAuditLogs: (token: string, params?: { page?: number; limit?: number; eventType?: string; userId?: string }) => {
+        const qs = new URLSearchParams();
+        if (params?.page)      qs.set("page",      String(params.page));
+        if (params?.limit)     qs.set("limit",      String(params.limit));
+        if (params?.eventType) qs.set("eventType",  params.eventType);
+        if (params?.userId)    qs.set("userId",     params.userId);
+        return apiRequest<{ success: boolean; data: { logs: AuditLog[]; pagination: { total: number; page: number; totalPages: number } } }>(
+            `/audit/system${qs.toString() ? "?" + qs.toString() : ""}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+    },
+
+    /** GET /audit/invoice/:invoiceId — logs for a specific invoice */
+    getInvoiceLogs: (token: string, invoiceId: string) =>
+        apiRequest<{ success: boolean; data: { logs: AuditLog[] } }>(
+            `/audit/invoice/${encodeURIComponent(invoiceId)}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        ),
+};
 
 
 export const api = {
