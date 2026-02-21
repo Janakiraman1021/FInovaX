@@ -115,7 +115,14 @@ export default function MSMEDashboardPage() {
                                             <p className="font-mono text-[10px] text-mg-dim mt-0.5 truncate max-w-[140px]">{inv.invoiceHash?.slice(0, 14)}…</p>
                                         </td>
                                         <td className="font-semibold text-mg-silver">{formatCurrency(inv.amount)}</td>
-                                        <td className="text-mg-muted text-sm">{formatDate(inv.createdAt)}</td>
+                                        <td className="text-mg-muted text-sm">
+                                            <span>{formatDate(inv.createdAt)}</span>
+                                            {inv.status === "SUBMITTED" && (
+                                                <span className="block text-[10px] text-mg-dim mt-0.5 italic">
+                                                    Verification in progress with lenders
+                                                </span>
+                                            )}
+                                        </td>
                                         <td>
                                             <div className="flex flex-col gap-1">
                                                 <StatusBadge status={inv.status} />

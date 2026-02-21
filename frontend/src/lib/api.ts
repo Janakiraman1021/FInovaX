@@ -236,6 +236,9 @@ export interface LenderInvoice {
     submittedAt?: string;
     isReceivableFinanced?: boolean;
     canFinance?: boolean;
+    // Upgrade 1 & 2: Trust signals (read-only, non-blocking)
+    receivableConfidence?: "HIGH" | "MEDIUM" | "LOW";
+    riskFlag?: string;
 }
 
 export interface LenderVerifyResult {
@@ -261,6 +264,9 @@ export interface LenderVerifyResult {
         registeredOnChain: boolean;
     };
     canFinance: boolean;
+    // Upgrade 1 & 2: Trust signals returned alongside verification
+    receivableConfidence?: "HIGH" | "MEDIUM" | "LOW";
+    riskFlag?: string;
 }
 
 export const lenderAPI = {

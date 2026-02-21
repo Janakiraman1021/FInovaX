@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
+import { ConfidenceBadge, ConfidenceLevel } from "@/components/shared/ConfidenceBadge";
+import { RiskFlagBadge } from "@/components/shared/RiskFlagBadge";
 
 type ResultState = {
     kind: "verified" | "financed" | "blocked" | "not_found" | "error";
@@ -288,6 +290,18 @@ export const HashVerifier = () => {
                                             hash={result.data.invoice.financeTxHash}
                                             explorerBase="https://sepolia.etherscan.io/tx/"
                                         />
+                                    )}
+
+                                    {/* Trust signals — Upgrade 1 & 2 */}
+                                    {(result.data.receivableConfidence || result.data.riskFlag) && (
+                                        <div className="mt-1 pt-2.5 border-t border-mg-lavender/10 flex flex-wrap items-center gap-2">
+                                            {result.data.receivableConfidence && (
+                                                <ConfidenceBadge confidence={result.data.receivableConfidence as ConfidenceLevel} />
+                                            )}
+                                            {result.data.riskFlag && (
+                                                <RiskFlagBadge riskFlag={result.data.riskFlag} />
+                                            )}
+                                        </div>
                                     )}
 
                                     {/* On-chain badge */}

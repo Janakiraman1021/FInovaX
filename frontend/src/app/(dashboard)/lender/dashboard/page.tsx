@@ -10,6 +10,8 @@ import { Coins, Zap, Ban, AlertTriangle, TrendingUp, ShieldOff, ClipboardCheck, 
 import { toast } from "sonner";
 import BlockchainVisualizer from "@/components/oneflow/BlockchainVisualizer";
 import { InteroperabilityBadge } from "@/components/shared/InteroperabilityBadge";
+import { ConfidenceBadge, ConfidenceLevel } from "@/components/shared/ConfidenceBadge";
+import { RiskFlagBadge } from "@/components/shared/RiskFlagBadge";
 
 export default function LenderDashboard() {
     const [invoices, setInvoices]     = useState<LenderInvoice[]>([]);
@@ -134,6 +136,17 @@ export default function LenderDashboard() {
                                     </div>
                                     <p className="text-lg font-bold text-status-success">{formatCurrency(inv.amount)}</p>
                                     <p className="font-mono text-[10px] text-mg-dim mt-0.5 truncate">{inv.invoiceHash?.slice(0, 20)}…</p>
+                                    {/* Trust signals — non-blocking context for the lender */}
+                                    {(inv.receivableConfidence || inv.riskFlag) && (
+                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                            {inv.receivableConfidence && (
+                                                <ConfidenceBadge confidence={inv.receivableConfidence as ConfidenceLevel} />
+                                            )}
+                                            {inv.riskFlag && (
+                                                <RiskFlagBadge riskFlag={inv.riskFlag} />
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                                 <button onClick={() => handleDisburse(inv)} disabled={processing === inv.invoiceId}
                                     className={`shrink-0 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wide transition-all ${processing === inv.invoiceId ? "bg-mg-card text-mg-dim cursor-not-allowed" : "text-white hover:-translate-y-0.5"}`}

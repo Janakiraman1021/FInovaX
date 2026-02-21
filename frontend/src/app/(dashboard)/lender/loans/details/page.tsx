@@ -13,6 +13,8 @@ import { motion } from "framer-motion";
 import { FileText, ExternalLink, Copy, Check, ArrowLeft, Loader2, Building2, Lock } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { ConfidenceBadge, ConfidenceLevel } from "@/components/shared/ConfidenceBadge";
+import { RiskFlagBadge } from "@/components/shared/RiskFlagBadge";
 
 export default function LenderInvoiceDetailsPage() {
     const searchParams = useSearchParams();
@@ -95,6 +97,24 @@ export default function LenderInvoiceDetailsPage() {
                     </div>
                 </div>
             </motion.div>
+
+            {/* Trust Signals — Upgrade 1 & 2 (non-blocking, informational only) */}
+            {(invoice.receivableConfidence || invoice.riskFlag) && invoice.status !== "FINANCED" && (
+                <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="px-5 py-3.5 rounded-xl border border-mg-lavender/15 flex flex-wrap items-center gap-3"
+                    style={{ background: "rgba(74,78,143,0.05)" }}
+                >
+                    <p className="text-[10px] uppercase tracking-widest font-semibold text-mg-dim mr-1">Trust Signals</p>
+                    {invoice.receivableConfidence && (
+                        <ConfidenceBadge confidence={invoice.receivableConfidence as ConfidenceLevel} />
+                    )}
+                    {invoice.riskFlag && (
+                        <RiskFlagBadge riskFlag={invoice.riskFlag} />
+                    )}
+                </motion.div>
+            )}
 
             {/* Privacy Notice for Financed Receivables */}
             {invoice.status === "FINANCED" && (
