@@ -42,8 +42,8 @@ const runSeed = async () => {
         const createdUsers = await User.create(users);
         console.log(`👤 Created ${createdUsers.length} seed users`);
 
-        const msme = createdUsers.find(u => u.role === 'msme');
-        const lenderA = createdUsers.find(u => u.email === 'lenderA@fintrust.com');
+        const msme = await User.findOne({ email: 'msme@fintrust.com' });
+        const lenderA = await User.findOne({ email: 'lenderA@fintrust.com' });
 
         // 3. Create dummy file hashes for invoices
         const dummyBuffer1 = Buffer.from('Dummy Invoice PDF Content 1');
