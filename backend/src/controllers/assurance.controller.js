@@ -14,7 +14,7 @@ const submitReport = async (req, res, next) => {
         const { invoiceId, usageCategory, description, attachments } = req.body;
 
         // 1. Find invoice and verify ownership + state
-        const invoice = await Invoice.findOne({ _id: invoiceId, uploadedBy: req.user.id });
+        const invoice = await Invoice.findOne({ invoiceId: invoiceId, uploadedBy: req.user.id });
         if (!invoice) return next(new AppError('Invoice not found or access denied', 404));
 
         if (invoice.status !== 'FINANCED') {
@@ -44,7 +44,9 @@ const submitReport = async (req, res, next) => {
             details: {
                 reportId: report._id,
                 usageCategory
-            }
+            },
+            ipAddress: req.ip,
+            requestId: req.requestId,
         });
 
         return sendResponse(res, 201, { report }, 'Assurance report submitted successfully. Trust signals updated.');
@@ -88,7 +90,9 @@ const acknowledgeReport = async (req, res, next) => {
             performedBy: req.user.id,
             invoiceId: report.invoiceId,
             receivableFingerprint: report.receivableFingerprint,
-            details: { reportId: report._id }
+            details: { reportId: report._id },
+            ipAddress: req.ip,
+            requestId: req.requestId,
         });
 
         return sendResponse(res, 200, { report }, 'Assurance report acknowledged. MSME trust score reinforced.');
@@ -100,7 +104,14 @@ const acknowledgeReport = async (req, res, next) => {
 const getReportByInvoice = async (req, res, next) => {
     try {
         const { invoiceId } = req.params;
-        const filter = { invoiceId };
+        
+        // First find the invoice to get its MongoDB _id
+        const invoice = await Invoice.findOne({ invoiceId });
+        if (!invoice) {
+            return sendResponse(res, 200, { report: null });
+        }
+
+        const filter = { invoiceId: invoice._id };
 
         // Role-based visibility
         if (req.user.role === 'msme') filter.msmeId = req.user.id;
