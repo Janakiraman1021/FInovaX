@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { UserRole, mockUsers } from "@/lib/mock/mockUsers";
 import {
     Shield, Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle,
     Layers, Cpu, FileCheck, ChevronRight,
@@ -10,10 +9,12 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import Link from "next/link";
 
+const DEMO_PASSWORD = "Password123!";
+
 const demoAccounts = [
-    { email: "john@techflow.io",       role: "msme",    label: "MSME" },
-    { email: "sarah@globalfinance.com", role: "lender",  label: "Lender" },
-    { email: "officer@finreg.gov",      role: "auditor", label: "Auditor" },
+    { email: "msme@fintrust.com",    password: DEMO_PASSWORD, role: "msme",    label: "MSME" },
+    { email: "lenderA@fintrust.com", password: DEMO_PASSWORD, role: "lender",  label: "Lender" },
+    { email: "auditor@fintrust.com", password: DEMO_PASSWORD, role: "auditor", label: "Auditor" },
 ];
 
 const features = [
@@ -35,29 +36,27 @@ const features = [
 ];
 
 export default function LoginPage() {
-    const { login } = useAuth();
+    const { loginWithCredentials } = useAuth();
     const [email, setEmail]       = useState("");
     const [password, setPassword] = useState("");
     const [showPw, setShowPw]     = useState(false);
     const [error, setError]       = useState("");
     const [loading, setLoading]   = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
         if (!email.trim() || !password.trim()) {
             setError("Please enter your email and password.");
             return;
         }
-        const user = Object.values(mockUsers).find(
-            u => u.email.toLowerCase() === email.trim().toLowerCase()
-        );
-        if (!user) {
-            setError("Invalid credentials. Use one of the demo accounts below.");
-            return;
-        }
         setLoading(true);
-        setTimeout(() => login(user.role as UserRole), 1200);
+        try {
+            await loginWithCredentials(email.trim(), password);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Invalid credentials. Please try again.");
+            setLoading(false);
+        }
     };
 
     return (
@@ -224,13 +223,13 @@ export default function LoginPage() {
                     <div className="mt-5 mg-card rounded-2xl p-5">
                         <div className="flex items-center gap-2 mb-3">
                             <div className="h-px flex-1" style={{ background: "rgba(74,78,143,0.12)" }} />
-                            <p className="mg-label text-center whitespace-nowrap">Demo Accounts — any password</p>
+                            <p className="mg-label text-center whitespace-nowrap">Demo Accounts — password: Password123!</p>
                             <div className="h-px flex-1" style={{ background: "rgba(74,78,143,0.12)" }} />
                         </div>
                         <div className="space-y-2">
                             {demoAccounts.map(a => (
                                 <button key={a.role} type="button"
-                                    onClick={() => { setEmail(a.email); setPassword("demo1234"); setError(""); }}
+                                    onClick={() => { setEmail(a.email); setPassword(a.password); setError(""); }}
                                     className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group"
                                     style={{
                                         background: "var(--mg-elevated)",

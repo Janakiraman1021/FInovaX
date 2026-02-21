@@ -4,6 +4,55 @@ import { simulateLedgerLookup } from "./mock/mockLedger";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// ─── Real Backend API ──────────────────────────────────────────────────────────
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+export interface AuthUser {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    organization: string;
+}
+
+export interface RegisterPayload {
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+    organization: string;
+}
+
+async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const res = await fetch(`${API_BASE}${path}`, {
+        headers: { "Content-Type": "application/json", ...(options.headers ?? {}) },
+        ...options,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Request failed");
+    return data as T;
+}
+
+export const authAPI = {
+    login: (email: string, password: string) =>
+        apiRequest<{ success: boolean; data: { user: AuthUser; token: string } }>(
+            "/auth/login",
+            { method: "POST", body: JSON.stringify({ email, password }) }
+        ),
+    register: (payload: RegisterPayload) =>
+        apiRequest<{ success: boolean; data: { user: AuthUser; token: string } }>(
+            "/auth/register",
+            { method: "POST", body: JSON.stringify(payload) }
+        ),
+    getMe: (token: string) =>
+        apiRequest<{ success: boolean; data: AuthUser }>("/auth/me", {
+            headers: { Authorization: `Bearer ${token}` },
+        }),
+};
+
+// ─── Mock / Offline API ────────────────────────────────────────────────────────
+
 export const api = {
     auth: {
         login: async (role: string) => {

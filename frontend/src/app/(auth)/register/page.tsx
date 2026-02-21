@@ -39,7 +39,7 @@ const StatIcon = ({ icon: Icon, className, style }: { icon: React.ElementType; c
 );
 
 export default function RegisterPage() {
-    const { login } = useAuth();
+    const { registerUser } = useAuth();
     const [selectedRole, setSelectedRole] = useState<UserRole | "">("");
     const [showPw, setShowPw]             = useState(false);
     const [showCPw, setShowCPw]           = useState(false);
@@ -65,11 +65,25 @@ export default function RegisterPage() {
         return Object.keys(errs).length === 0;
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validate() || !selectedRole) return;
         setSubmitting(true);
-        setTimeout(() => login(selectedRole as UserRole), 1600);
+        try {
+            await registerUser({
+                name:         form.name.trim(),
+                email:        form.email.trim(),
+                password:     form.password,
+                role:         selectedRole,
+                organization: form.org.trim(),
+            });
+        } catch (err: unknown) {
+            setErrors(prev => ({
+                ...prev,
+                _api: err instanceof Error ? err.message : "Registration failed. Please try again.",
+            }));
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -299,6 +313,13 @@ export default function RegisterPage() {
                             {" "}and{" "}
                             <Link href="/privacy-policy" className="text-mg-cosmic hover:text-mg-lavender transition-colors">Privacy Policy</Link>.
                         </p>
+
+                        {errors._api && (
+                            <div className="flex items-center gap-2 p-3 rounded-xl text-sm text-status-danger"
+                                style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.18)" }}>
+                                <AlertCircle className="w-4 h-4 shrink-0" /> {errors._api}
+                            </div>
+                        )}
 
                         <button type="submit" disabled={submitting}
                             className={cn("mg-btn-primary w-full justify-center gap-2", submitting && "opacity-70 cursor-not-allowed")}>
