@@ -8,6 +8,7 @@ const { errorHandler } = require('./middleware/errorHandler');
 const requestIdMiddleware = require('./middleware/requestId');
 const v1Routes = require('./routes/v1.routes');
 const msmeProfileRoutes = require("./routes/msmeProfileRoutes");
+const trustRoutes = require('./routes/trust.routes');
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use('/invoices', invoiceRoutes);
 app.use('/blockchain', blockchainRoutes);
 app.use('/lender', lenderRoutes);
 app.use('/audit', auditRoutes);
+app.use('/trust', trustRoutes);
 
 // General Health (Redirecting to versioned health)
 app.get('/health', (_req, res) => res.redirect('/api/v1/health'));

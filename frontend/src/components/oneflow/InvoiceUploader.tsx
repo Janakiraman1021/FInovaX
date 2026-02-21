@@ -137,6 +137,8 @@ export const InvoiceUploader = () => {
                     msg = "You have already uploaded this file. To submit it to a lender, use the 'Submit to Lender' option from your invoice list.";
                 } else if (err.errorCode === "DUPLICATE_LENDER_SUBMISSION") {
                     msg = "You have already submitted this receivable to this lender. Please choose a different lender or upload a different invoice.";
+                } else if (err.errorCode === "INCONSISTENT_INVOICE_DATA") {
+                    msg = "The uploaded invoice file does not match the declared receivable details. Please ensure the invoice document matches the seller GSTIN, buyer GSTIN, amount, PO reference, and invoice date you entered.";
                 } else {
                     msg = err.message;
                 }
