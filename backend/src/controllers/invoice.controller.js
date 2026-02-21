@@ -42,6 +42,18 @@ const createInvoice = async (req, res, next) => {
         } = req.body;
         const fileBuffer = req.file.buffer;
 
+        // Validate and parse dates
+        let parsedInvoiceDate = invoiceDate ? new Date(invoiceDate) : new Date();
+        let parsedDueDate = dueDate ? new Date(dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+        // Check for invalid dates
+        if (isNaN(parsedInvoiceDate.getTime())) {
+            parsedInvoiceDate = new Date();
+        }
+        if (isNaN(parsedDueDate.getTime())) {
+            parsedDueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        }
+
         // Generate unique invoiceId
         const invoiceId = `INV-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
@@ -87,8 +99,8 @@ const createInvoice = async (req, res, next) => {
             sellerGSTIN,
             buyerGSTIN,
             poReference,
-            invoiceDate,
-            dueDate,
+            invoiceDate: parsedInvoiceDate,
+            dueDate: parsedDueDate,
             ipfsCID: ipfsResult.cid,
             originalFileName: req.file.originalname,
             status: 'UPLOADED',

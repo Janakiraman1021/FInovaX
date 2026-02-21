@@ -119,3 +119,51 @@ server.js → src/app.js (Express)
 ## Environment Variables
 
 See `.env.example` for all required configuration. Blockchain and IPFS features degrade gracefully when credentials are not configured.
+
+## Troubleshooting
+
+### Infura Rate Limit Errors
+
+If you see **"Too Many Requests"** errors from Infura:
+
+```
+Error: missing response for request [...] code: -32005, message: 'Too Many Requests'
+```
+
+**Solution:** Disable blockchain event listeners by adding to your `.env`:
+
+```env
+ENABLE_EVENT_LISTENERS=false
+```
+
+**Why this happens:**
+- Event listeners create blockchain filters that consume RPC calls
+- Infura's free tier has strict rate limits (100K requests/day)
+- Each filter creation counts towards the limit
+
+**Alternatives:**
+1. **Upgrade Infura plan** - Get higher rate limits
+2. **Use Alchemy** - More generous free tier (300M compute units/month)
+3. **Self-hosted node** - Run your own Ethereum node
+4. **Disable listeners** - They're optional; invoices still work without real-time events
+
+### Connection Issues
+
+If MongoDB connection fails:
+```bash
+# Check MongoDB is running
+mongosh
+
+# Or use MongoDB Atlas (cloud)
+MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/finovax
+```
+
+### Port Already in Use
+
+```bash
+# Kill process on port 5000
+npx kill-port 5000
+
+# Or change port in .env
+PORT=5001
+```

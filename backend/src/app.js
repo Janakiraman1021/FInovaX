@@ -7,6 +7,7 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 const requestIdMiddleware = require('./middleware/requestId');
 const v1Routes = require('./routes/v1.routes');
+const msmeProfileRoutes = require("./routes/msmeProfileRoutes");
 
 const app = express();
 
@@ -42,15 +43,24 @@ if (process.env.NODE_ENV !== 'test') {
 // Versioned routes (v1)
 app.use('/api/v1', v1Routes);
 
-// Backward Compatibility Routes
-app.use('/auth', v1Routes);
-app.use('/invoices', v1Routes);
-app.use('/blockchain', v1Routes);
-app.use('/lender', v1Routes);
-app.use('/audit', v1Routes);
+// Backward Compatibility Routes (mount individual route modules)
+const authRoutes = require('./routes/auth.routes');
+const invoiceRoutes = require('./routes/invoice.routes');
+const blockchainRoutes = require('./routes/blockchain.routes');
+const lenderRoutes = require('./routes/lender.routes');
+const auditRoutes = require('./routes/audit.routes');
+
+app.use('/auth', authRoutes);
+app.use('/invoices', invoiceRoutes);
+app.use('/blockchain', blockchainRoutes);
+app.use('/lender', lenderRoutes);
+app.use('/audit', auditRoutes);
 
 // General Health (Redirecting to versioned health)
 app.get('/health', (_req, res) => res.redirect('/api/v1/health'));
+
+// MSME Profile Routes
+app.use("/api/msme-profile", msmeProfileRoutes);
 
 // --------------- 404 Handler ---------------
 app.use((_req, res) => {

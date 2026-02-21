@@ -48,10 +48,16 @@ const verifyInvoice = async (req, res, next) => {
     try {
         const { invoiceId } = req.params;
 
-        // Find by invoiceId or invoiceHash (since it could be either)
+        // Find by invoiceId, invoiceHash, or ipfsCID
         const invoice = await Invoice.findOne({
-            $or: [{ invoiceId }, { invoiceHash: invoiceId }]
-        });
+            $or: [
+                { invoiceId }, 
+                { invoiceHash: invoiceId },
+                { ipfsCID: invoiceId }
+            ]
+        })
+        .populate('uploadedBy', 'name email organization')
+        .populate('financedBy', 'name email organization');
 
         if (!invoice) {
             return sendResponse(res, 200, {
@@ -114,11 +120,22 @@ const verifyInvoice = async (req, res, next) => {
 
         return sendResponse(res, 200, {
             invoice: {
+                id: invoice._id,
                 invoiceId: invoice.invoiceId,
                 amount: invoice.amount,
                 currency: invoice.currency,
                 status: invoice.status,
                 invoiceHash: invoice.invoiceHash,
+                uploadedBy: invoice.uploadedBy ? {
+                    name: invoice.uploadedBy.name,
+                    email: invoice.uploadedBy.email,
+                    organization: invoice.uploadedBy.organization
+                } : null,
+                financedBy: invoice.financedBy ? {
+                    name: invoice.financedBy.name,
+                    email: invoice.financedBy.email,
+                    organization: invoice.financedBy.organization
+                } : null,
                 financedAt: invoice.financedAt,
             },
             verification: {

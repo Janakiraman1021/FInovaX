@@ -102,6 +102,89 @@ export const invoiceAPI = {
     },
 };
 
+export interface MSMEProfile {
+    _id: string;
+    userId: string;
+    sellerGSTIN: string;
+    buyerGSTIN: string;
+    invoiceAmount?: number;
+    invoiceDate?: string;
+    poReference?: string;
+    companyName?: string;
+    contactPerson?: string;
+    email?: string;
+    phone?: string;
+    address?: {
+        street?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
+        country?: string;
+    };
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface MSMEProfilePayload {
+    sellerGSTIN: string;
+    buyerGSTIN: string;
+    invoiceAmount?: number;
+    invoiceDate?: string;
+    poReference?: string;
+    companyName?: string;
+    contactPerson?: string;
+    email?: string;
+    phone?: string;
+    address?: {
+        street?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
+        country?: string;
+    };
+}
+
+export const msmeProfileAPI = {
+    /** GET /api/msme-profile — get current user's profile */
+    getProfile: (token: string) =>
+        apiRequest<{ success: boolean; data: MSMEProfile }>(
+            "/api/msme-profile",
+            { headers: { Authorization: `Bearer ${token}` } }
+        ),
+
+    /** POST /api/msme-profile — create or update profile */
+    createOrUpdate: (token: string, payload: MSMEProfilePayload) =>
+        apiRequest<{ success: boolean; message: string; data: MSMEProfile }>(
+            "/api/msme-profile",
+            {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: JSON.stringify(payload),
+            }
+        ),
+
+    /** PATCH /api/msme-profile/field — update single field */
+    updateField: (token: string, field: string, value: any) =>
+        apiRequest<{ success: boolean; message: string; data: MSMEProfile }>(
+            "/api/msme-profile/field",
+            {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ field, value }),
+            }
+        ),
+
+    /** DELETE /api/msme-profile — delete profile */
+    deleteProfile: (token: string) =>
+        apiRequest<{ success: boolean; message: string }>(
+            "/api/msme-profile",
+            {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        ),
+};
+
 export interface LenderInvoice {
     _id: string;
     invoiceId: string;
@@ -127,7 +210,7 @@ export interface LenderVerifyResult {
         currency: string;
         status: string;
         invoiceHash: string;
-        uploadedBy: { name: string; email: string; organization: string };
+        uploadedBy: { name: string; email: string; organization: string } | null;
         financedBy: { name: string; email: string; organization: string } | null;
         financedAt: string | null;
     };

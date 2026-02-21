@@ -45,12 +45,25 @@ export const HashVerifier = () => {
         try {
             const res = await lenderAPI.verifyInvoice(token, q);
             const d   = res.data;
+            
+            // Safety check for data structure
+            if (!d || !d.verification) {
+                throw new Error("Invalid response format from server");
+            }
+            
+            // Handle NOT_FOUND case
+            if (d.verification.status === 'NOT_FOUND' || !d.invoice) {
+                setResult({ kind: "not_found" });
+                toast.warning("Hash not found", { description: "No invoice with this ID or hash exists on the ledger." });
+                return;
+            }
+            
             if (d.verification.duplicate || d.verification.financed) {
                 setResult({ kind: "financed", data: d });
                 toast.error("Duplicate financing detected", { description: "This invoice is already financed on the ledger." });
             } else {
                 setResult({ kind: "verified", data: d });
-                toast.success("Invoice authenticated", { description: `Hash verified · Status: ${d.invoice.status}` });
+                toast.success("Invoice authenticated", { description: `Hash verified · Status: ${d.invoice.status || 'Unknown'}` });
             }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Verification failed";
@@ -92,7 +105,7 @@ export const HashVerifier = () => {
                 </div>
                 <div>
                     <p className="font-semibold text-mg-silver text-sm">Ledger Oracle</p>
-                    <p className="text-[10px] text-mg-dim">Verify invoice integrity via ID or hash lookup</p>
+                    <p className="text-[10px] text-mg-dim">Verify invoice via ID, hash, or IPFS CID lookup</p>
                 </div>
             </div>
 
@@ -105,7 +118,7 @@ export const HashVerifier = () => {
                         value={query}
                         onChange={e => setQuery(e.target.value)}
                         onKeyDown={e => e.key === "Enter" && handleVerify()}
-                        placeholder="Invoice ID (INV-XXXX) or SHA-256 hash…"
+                        placeholder="Invoice ID, SHA-256 hash, or IPFS CID…"
                         className="mg-input pl-10 pr-10 font-mono text-sm"
                     />
                     {query && (
@@ -181,12 +194,12 @@ export const HashVerifier = () => {
                                             value: `${result.data.invoice.currency} ${formatCurrency(result.data.invoice.amount)}`,
                                             mono: false,
                                         },
-                                        {
+                                        ...(result.data.invoice.uploadedBy ? [{
                                             icon: User,
                                             label: "Uploaded By",
                                             value: `${result.data.invoice.uploadedBy.name} · ${result.data.invoice.uploadedBy.organization}`,
                                             mono: false,
-                                        },
+                                        }] : []),
                                         ...(result.data.invoice.financedBy ? [{
                                             icon: Building2,
                                             label: "Financed By",
@@ -243,7 +256,7 @@ export const HashVerifier = () => {
                 {!result && !isVerifying && (
                     <div className="mt-auto flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-mg-elevated border border-mg-lavender/10">
                         <div className="w-1.5 h-1.5 rounded-full bg-mg-lavender animate-pulse shrink-0" />
-                        <span className="text-[10px] text-mg-dim font-mono">Accepts Invoice ID or SHA-256 hash · queries Polygon zkEVM state</span>
+                        <span className="text-[10px] text-mg-dim font-mono">Accepts Invoice ID, SHA-256 hash, or IPFS CID · queries ledger state</span>
                     </div>
                 )}
             </div>
