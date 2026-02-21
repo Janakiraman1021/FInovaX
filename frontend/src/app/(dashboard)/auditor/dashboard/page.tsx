@@ -15,7 +15,7 @@ export default function AuditorDashboard() {
 
     const fetchData = useCallback(async () => {
         try {
-            const token = localStorage.getItem("finovax-token") ?? "";
+            const token = localStorage.getItem("oneflow-token") ?? "";
             if (!token || token.startsWith("mock.")) { setLoading(false); return; }
             const [logsRes, invRes] = await Promise.all([
                 auditorAPI.getAuditLogs(token, { limit: 20 }),

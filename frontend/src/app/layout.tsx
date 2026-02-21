@@ -7,7 +7,7 @@ import { Toaster } from "sonner";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-    title: "FINOVAX | Web3 Invoice Financing",
+    title: "ONEFLOW | Web3 Invoice Financing",
     description: "Midnight Galaxy — Hybrid Audit Architecture for Secure Invoice Financing",
 };
 

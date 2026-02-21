@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,7 +35,7 @@ export const InvoiceUploader = () => {
 
     // Fetch lenders on mount
     useEffect(() => {
-        const token = localStorage.getItem("finovax-token");
+        const token = localStorage.getItem("oneflow-token");
         if (!token || token.startsWith("mock.")) return;
         authAPI.getLenders(token)
             .then(res => setLenders(res.data))
@@ -88,7 +88,7 @@ export const InvoiceUploader = () => {
     const handleUpload = async () => {
         if (!validate()) return;
 
-        const token = localStorage.getItem("finovax-token");
+        const token = localStorage.getItem("oneflow-token");
         if (!token || token.startsWith("mock.")) {
             toast.error("Please log in with a real account to upload invoices.");
             return;

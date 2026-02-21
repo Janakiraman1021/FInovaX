@@ -24,8 +24,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = "finovax-token";
-const ROLE_KEY  = "finovax-role";
+const TOKEN_KEY = "oneflow-token";
+const ROLE_KEY  = "oneflow-role";
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser]             = useState<AuthUser | null>(null);
@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setRole(authUser.role as UserRole);
         localStorage.setItem(TOKEN_KEY, token);
         localStorage.setItem(ROLE_KEY, authUser.role);
-        document.cookie = `finovax-role=${authUser.role}; path=/; max-age=86400`;
+        document.cookie = `oneflow-role=${authUser.role}; path=/; max-age=86400`;
     }, []);
 
     // ── Real credential login ──────────────────────────────────────────────────
@@ -96,15 +96,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const demoUser: AuthUser = {
             id: `demo-${newRole}`,
             name: newRole.charAt(0).toUpperCase() + newRole.slice(1) + " Demo",
-            email: `demo@${newRole}.finovax`,
+            email: `demo@${newRole}.oneflow`,
             role: newRole,
-            organization: "FInovaX Demo",
+            organization: "OneFlow Demo",
         };
         setUser(demoUser);
         setRole(newRole);
         localStorage.setItem(ROLE_KEY, newRole);
-        localStorage.setItem(TOKEN_KEY, `mock.jwt.finovax.${newRole}`);
-        document.cookie = `finovax-role=${newRole}; path=/; max-age=86400`;
+        localStorage.setItem(TOKEN_KEY, `mock.jwt.oneflow.${newRole}`);
+        document.cookie = `oneflow-role=${newRole}; path=/; max-age=86400`;
         router.push(`/${newRole}/dashboard`);
     }, [router]);
 
@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setRole(null);
         localStorage.removeItem(ROLE_KEY);
         localStorage.removeItem(TOKEN_KEY);
-        document.cookie = "finovax-role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "oneflow-role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         router.push("/login");
     }, [router]);
 

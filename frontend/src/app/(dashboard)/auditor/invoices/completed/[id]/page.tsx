@@ -48,7 +48,7 @@ export default function CompletedInvoiceDetail() {
         setLoading(true);
         setError("");
         try {
-            const token = localStorage.getItem("finovax-token") ?? "";
+            const token = localStorage.getItem("oneflow-token") ?? "";
             const [invRes, logsRes] = await Promise.all([
                 auditorAPI.getAllInvoices(token, { limit: 200 }),
                 auditorAPI.getInvoiceLogs(token, invoiceId),

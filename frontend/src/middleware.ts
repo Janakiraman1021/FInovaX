@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
-    const role = request.cookies.get('finovax-role')?.value;
+    const role = request.cookies.get('oneflow-role')?.value;
 
     // Protect dashboard routes
     if (pathname.startsWith('/msme') || pathname.startsWith('/lender') || pathname.startsWith('/auditor')) {

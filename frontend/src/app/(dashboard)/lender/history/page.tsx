@@ -26,7 +26,7 @@ export default function LenderHistory() {
     const [loading, setLoading]     = useState(true);
 
     const fetchData = useCallback(async () => {
-        const token = localStorage.getItem("finovax-token") ?? "";
+        const token = localStorage.getItem("oneflow-token") ?? "";
         if (!token || token.startsWith("mock.")) { setLoading(false); return; }
         setLoading(true);
         try {

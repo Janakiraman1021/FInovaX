@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
@@ -52,7 +52,7 @@ export default function ProfilePage() {
     // Load MSME profile (msme role only)
     useEffect(() => {
         if (role !== "msme") return;
-        const token = localStorage.getItem("finovax-token");
+        const token = localStorage.getItem("oneflow-token");
         if (!token || token.startsWith("mock.")) return;
         setLoadingBiz(true);
         msmeProfileAPI.getProfile(token)
@@ -91,7 +91,7 @@ export default function ProfilePage() {
 
     const handleSaveBiz = async () => {
         if (!companyName.trim()) { setBizError("Company name is required."); return; }
-        const token = localStorage.getItem("finovax-token");
+        const token = localStorage.getItem("oneflow-token");
         if (!token || token.startsWith("mock.")) {
             toast.info("Business profile is disabled in demo mode.");
             return;

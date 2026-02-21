@@ -27,7 +27,7 @@ const sections = [
     },
     {
         title: "7. Your Rights",
-        body: `Under India's Digital Personal Data Protection Act, 2023, you have the right to: access your personal data; correct inaccuracies; request erasure (where permissible); nominate a representative. Submit requests to privacy@finovax.in. We will respond within 30 days.`,
+        body: `Under India's Digital Personal Data Protection Act, 2023, you have the right to: access your personal data; correct inaccuracies; request erasure (where permissible); nominate a representative. Submit requests to privacy@oneflow.in. We will respond within 30 days.`,
     },
     {
         title: "8. Cookies",
@@ -47,7 +47,7 @@ const sections = [
     },
     {
         title: "12. Contact Us",
-        body: `Data Protection Officer: dpo@finovax.in\nFInovaX Technologies Pvt. Ltd., 3rd Floor, Prestige Tech Park, Outer Ring Road, Bengaluru — 560 103, Karnataka, India.\nGrievance Officer (DPDPA): grievance@finovax.in`,
+        body: `Data Protection Officer: dpo@oneflow.in\nOneFlow Technologies Pvt. Ltd., 3rd Floor, Prestige Tech Park, Outer Ring Road, Bengaluru — 560 103, Karnataka, India.\nGrievance Officer (DPDPA): grievance@oneflow.in`,
     },
 ];
 
@@ -62,7 +62,7 @@ export default function PrivacyPolicyPage() {
                         Effective date: <strong>1 January 2026</strong> · Last updated: <strong>21 February 2026</strong>
                     </p>
                     <p className="text-sm text-mg-muted mt-3 leading-relaxed">
-                        FInovaX Technologies Pvt. Ltd. ("FInovaX", "we", "us") is committed to protecting your personal data.
+                        OneFlow Technologies Pvt. Ltd. ("OneFlow", "we", "us") is committed to protecting your personal data.
                         This Privacy Policy explains how we collect, use, and protect your information when you use our Platform.
                     </p>
                 </div>

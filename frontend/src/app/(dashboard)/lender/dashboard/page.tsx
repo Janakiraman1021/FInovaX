@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { HashVerifier } from "@/components/finovax/HashVerifier";
+import { HashVerifier } from "@/components/oneflow/HashVerifier";
 import { lenderAPI, LenderInvoice } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Coins, Zap, Ban, AlertTriangle, TrendingUp, ShieldOff, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
-import BlockchainVisualizer from "@/components/finovax/BlockchainVisualizer";
+import BlockchainVisualizer from "@/components/oneflow/BlockchainVisualizer";
 
 export default function LenderDashboard() {
     const [invoices, setInvoices]     = useState<LenderInvoice[]>([]);
@@ -16,7 +16,7 @@ export default function LenderDashboard() {
 
     const fetchInvoices = useCallback(async () => {
         try {
-            const token = localStorage.getItem("finovax-token") ?? "";
+            const token = localStorage.getItem("oneflow-token") ?? "";
             if (!token || token.startsWith("mock.")) return;
             const res = await lenderAPI.getAllInvoices(token, { limit: 50 });
             setInvoices(res.data.invoices);
@@ -30,7 +30,7 @@ export default function LenderDashboard() {
     const handleDisburse = async (inv: LenderInvoice) => {
         setProcessing(inv.invoiceId);
         try {
-            const token = localStorage.getItem("finovax-token") ?? "";
+            const token = localStorage.getItem("oneflow-token") ?? "";
             const res = await lenderAPI.financeInvoice(token, inv.invoiceId);
             toast.success("Settlement confirmed", {
                 description: `Ref: ${res.data.invoice.financeTxHash?.slice(0, 18) ?? inv.invoiceId}…`,

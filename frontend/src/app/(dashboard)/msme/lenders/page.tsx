@@ -15,7 +15,7 @@ export default function LendersPage() {
         setLoading(true);
         setError("");
         try {
-            const token = localStorage.getItem("finovax-token") ?? "";
+            const token = localStorage.getItem("oneflow-token") ?? "";
             if (!token || token.startsWith("mock.")) {
                 setError("Please log in with a real account to view lenders.");
                 setLoading(false);

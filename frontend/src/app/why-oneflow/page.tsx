@@ -17,29 +17,29 @@ const solutions = [
 ];
 
 const comparison = [
-    { feature: "Invoice verification",    traditional: "Manual, days",  finovax: "Blockchain hash, instant" },
-    { feature: "Fraud detection",         traditional: "Post-facto",    finovax: "Real-time, 99.8% accuracy" },
-    { feature: "Capital disbursement",    traditional: "45–90 days",    finovax: "Under 60 seconds" },
-    { feature: "Audit trail",             traditional: "Paper / siloed", finovax: "On-chain, immutable" },
-    { feature: "Regulator visibility",    traditional: "Quarterly reports", finovax: "Live dashboard" },
-    { feature: "Document privacy",        traditional: "Centralised servers", finovax: "IPFS + zero-knowledge" },
+    { feature: "Invoice verification",    traditional: "Manual, days",  oneflow: "Blockchain hash, instant" },
+    { feature: "Fraud detection",         traditional: "Post-facto",    oneflow: "Real-time, 99.8% accuracy" },
+    { feature: "Capital disbursement",    traditional: "45–90 days",    oneflow: "Under 60 seconds" },
+    { feature: "Audit trail",             traditional: "Paper / siloed", oneflow: "On-chain, immutable" },
+    { feature: "Regulator visibility",    traditional: "Quarterly reports", oneflow: "Live dashboard" },
+    { feature: "Document privacy",        traditional: "Centralised servers", oneflow: "IPFS + zero-knowledge" },
 ];
 
-export default function WhyFInovaXPage() {
+export default function WhyOneFlowPage() {
     return (
         <PublicShell>
             {/* Hero */}
             <section className="max-w-4xl mx-auto px-8 pt-20 pb-16 text-center">
                 <span className="mg-pill mb-5 inline-flex">
                     <span className="w-1.5 h-1.5 rounded-full bg-mg-lavender animate-pulse" />
-                    Why FInovaX?
+                    Why OneFlow?
                 </span>
                 <h1 className="text-5xl font-bold tracking-tight mb-5 mg-gradient-text leading-tight">
                     The Problem with<br />Traditional Invoice Finance
                 </h1>
                 <p className="text-lg text-mg-muted max-w-2xl mx-auto leading-relaxed">
                     Today's trade finance ecosystem is broken — opaque, slow, and rife with fraud.
-                    FInovaX was built to fix it from the ground up.
+                    OneFlow was built to fix it from the ground up.
                 </p>
             </section>
 
@@ -65,7 +65,7 @@ export default function WhyFInovaXPage() {
             {/* Solutions */}
             <section className="max-w-4xl mx-auto px-8 py-16">
                 <p className="mg-label text-center mb-4">Our Solution</p>
-                <h2 className="text-3xl font-bold text-mg-silver text-center mb-10 tracking-tight">How FInovaX solves it</h2>
+                <h2 className="text-3xl font-bold text-mg-silver text-center mb-10 tracking-tight">How OneFlow solves it</h2>
                 <div className="space-y-5">
                     {solutions.map(s => (
                         <div key={s.step} className="mg-card rounded-2xl p-6 flex gap-5">
@@ -89,14 +89,14 @@ export default function WhyFInovaXPage() {
             {/* Comparison table */}
             <section className="bg-white border-t border-mg-lavender/10 py-16 px-8">
                 <div className="max-w-4xl mx-auto">
-                    <h2 className="text-2xl font-bold text-mg-silver text-center mb-8 tracking-tight">FInovaX vs Traditional Finance</h2>
+                    <h2 className="text-2xl font-bold text-mg-silver text-center mb-8 tracking-tight">OneFlow vs Traditional Finance</h2>
                     <div className="mg-card rounded-2xl overflow-hidden">
                         <table className="w-full mg-table">
                             <thead>
                                 <tr>
                                     <th className="text-left">Feature</th>
                                     <th className="text-center">Traditional</th>
-                                    <th className="text-center">FInovaX</th>
+                                    <th className="text-center">OneFlow</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -104,7 +104,7 @@ export default function WhyFInovaXPage() {
                                     <tr key={c.feature}>
                                         <td className="font-medium">{c.feature}</td>
                                         <td className="text-center text-status-danger text-sm">{c.traditional}</td>
-                                        <td className="text-center text-status-success text-sm font-medium">{c.finovax}</td>
+                                        <td className="text-center text-status-success text-sm font-medium">{c.oneflow}</td>
                                     </tr>
                                 ))}
                             </tbody>

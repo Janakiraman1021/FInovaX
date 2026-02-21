@@ -15,7 +15,7 @@ export default function LenderActiveLoans() {
     const [loading, setLoading]       = useState(true);
 
     const fetchInvoices = useCallback(async () => {
-        const token = localStorage.getItem("finovax-token") ?? "";
+        const token = localStorage.getItem("oneflow-token") ?? "";
         if (!token || token.startsWith("mock.")) { setLoading(false); return; }
         setLoading(true);
         try {
@@ -31,7 +31,7 @@ export default function LenderActiveLoans() {
     useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
 
     const handleDisburse = async (inv: LenderInvoice) => {
-        const token = localStorage.getItem("finovax-token") ?? "";
+        const token = localStorage.getItem("oneflow-token") ?? "";
         if (!token || token.startsWith("mock.")) { toast.error("Real lender account required."); return; }
         setProcessing(inv._id);
         try {

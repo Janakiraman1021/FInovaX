@@ -1,6 +1,6 @@
 "use client";
 
-import { HashVerifier } from "@/components/finovax/HashVerifier";
+import { HashVerifier } from "@/components/oneflow/HashVerifier";
 import { motion } from "framer-motion";
 import { ShieldCheck } from "lucide-react";
 

@@ -18,7 +18,7 @@ export default function AuditorPendingInvoices() {
         setLoading(true);
         setError("");
         try {
-            const token = localStorage.getItem("finovax-token") ?? "";
+            const token = localStorage.getItem("oneflow-token") ?? "";
             const res = await auditorAPI.getAllInvoices(token, { status: "UPLOADED", limit: 200 });
             setInvoices(res.data.invoices);
         } catch (err: unknown) {

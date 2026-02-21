@@ -1,4 +1,4 @@
-import FilteredInvoicePage from "@/components/finovax/FilteredInvoicePage";
+import FilteredInvoicePage from "@/components/oneflow/FilteredInvoicePage";
 import { Clock } from "lucide-react";
 
 export default function PendingPage() {

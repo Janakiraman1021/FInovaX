@@ -20,7 +20,7 @@ export default function AuditorCompletedInvoices() {
         setLoading(true);
         setError("");
         try {
-            const token = localStorage.getItem("finovax-token") ?? "";
+            const token = localStorage.getItem("oneflow-token") ?? "";
             const res = await auditorAPI.getAllInvoices(token, { limit: 200 });
             setInvoices(res.data.invoices.filter(i => DONE_STATUSES.includes(i.status)));
         } catch (err: unknown) {

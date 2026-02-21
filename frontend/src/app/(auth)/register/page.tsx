@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useAuth } from "@/context/AuthContext";
 import { UserRole } from "@/lib/mock/mockUsers";
@@ -113,7 +113,7 @@ export default function RegisterPage() {
                             style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)" }}>
                             <Shield className="w-5 h-5 text-white" />
                         </div>
-                        <span className="text-white font-bold text-xl tracking-tight">FInovaX</span>
+                        <span className="text-white font-bold text-xl tracking-tight">OneFlow</span>
                     </div>
                 </div>
 
@@ -128,7 +128,7 @@ export default function RegisterPage() {
                             <span style={{ color: "#b8a8ff" }}>verified trade finance.</span>
                         </h2>
                         <p className="text-sm leading-relaxed mb-10" style={{ color: "rgba(203,196,255,0.75)" }}>
-                            Whether you're an MSME looking to unlock capital, a lender seeking verified assets, or a regulator — FInovaX has a role for you.
+                            Whether you're an MSME looking to unlock capital, a lender seeking verified assets, or a regulator — OneFlow has a role for you.
                         </p>
                     </motion.div>
 
@@ -175,7 +175,7 @@ export default function RegisterPage() {
                 <div className="relative z-10 pb-8 px-10">
                     <div className="h-px mb-6" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)" }} />
                     <p className="text-xs" style={{ color: "rgba(203,196,255,0.45)" }}>
-                        &copy; {new Date().getFullYear()} FInovaX. All rights reserved.
+                        &copy; {new Date().getFullYear()} OneFlow. All rights reserved.
                     </p>
                 </div>
             </motion.aside>
@@ -197,7 +197,7 @@ export default function RegisterPage() {
                             style={{ background: "linear-gradient(135deg, #4a4e8f, #6b5ea0)" }}>
                             <Shield className="w-4 h-4 text-white" />
                         </div>
-                        <span className="font-bold text-lg mg-gradient-text">FInovaX</span>
+                        <span className="font-bold text-lg mg-gradient-text">OneFlow</span>
                     </div>
 
                     <div className="mb-7">

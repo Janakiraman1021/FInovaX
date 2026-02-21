@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getAllInvoices, verifyInvoice, financeInvoice } = require('../controllers/lender.controller');
+const { getAllInvoices, verifyInvoice, financeInvoice, updateInvoiceStatus } = require('../controllers/lender.controller');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
 const { financeLimiter } = require('../middleware/rateLimiter');
@@ -16,5 +16,8 @@ router.get('/verify/:invoiceId', verifyInvoice);
 
 // POST /lender/finance/:invoiceId — finance an invoice
 router.post('/finance/:invoiceId', financeLimiter, financeInvoice);
+
+// PATCH /lender/invoices/:invoiceId/status — update invoice status
+router.patch('/invoices/:invoiceId/status', updateInvoiceStatus);
 
 module.exports = router;

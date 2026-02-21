@@ -40,7 +40,6 @@ const invoiceSchema = new mongoose.Schema(
         invoiceHash: {
             type: String,
             required: [true, 'Invoice hash is required'],
-            unique: true,
             index: true,
         },
         ipfsCID: {
@@ -112,12 +111,6 @@ const invoiceSchema = new mongoose.Schema(
     {
         timestamps: true,
     }
-);
-
-// Compound unique index for the business obligation
-invoiceSchema.index(
-    { sellerGSTIN: 1, buyerGSTIN: 1, amount: 1, poReference: 1, invoiceDate: 1 },
-    { unique: true, name: 'receivable_uniqueness_index' }
 );
 
 // No need for compound index on invoiceId as it will be unique UUID

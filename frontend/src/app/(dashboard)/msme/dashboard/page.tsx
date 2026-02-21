@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { InvoiceUploader } from "@/components/finovax/InvoiceUploader";
+import { InvoiceUploader } from "@/components/oneflow/InvoiceUploader";
 import { invoiceAPI, UploadedInvoice } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -16,7 +16,7 @@ export default function MSMEDashboardPage() {
     const fetchInvoices = useCallback(async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem("finovax-token") ?? "";
+            const token = localStorage.getItem("oneflow-token") ?? "";
             if (!token || token.startsWith("mock.")) { setLoading(false); return; }
             const res = await invoiceAPI.getMyInvoices(token, { limit: 20 });
             setInvoices(res.data.invoices);

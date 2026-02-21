@@ -172,17 +172,37 @@ const financeInvoice = async (req, res, next) => {
         }
 
         try {
+            const financedAt = new Date();
             invoice.status = 'FINANCED';
             invoice.financedBy = req.user.id;
-            invoice.financedAt = new Date();
+            invoice.financedAt = financedAt;
             invoice.financeTxHash = docBlockchainResult?.txHash || null;
             await invoice.save();
 
-            // Mark ALL OTHER invoices with same receivableFingerprint as BLOCKED
+            // Step A: Propagate FINANCED to all uploads of the same file (same ipfsCID)
+            if (invoice.ipfsCID) {
+                await Invoice.updateMany(
+                    {
+                        ipfsCID: invoice.ipfsCID,
+                        _id: { $ne: invoice._id }
+                    },
+                    {
+                        $set: {
+                            status: 'FINANCED',
+                            financedBy: req.user.id,
+                            financedAt,
+                            financeTxHash: docBlockchainResult?.txHash || null
+                        }
+                    }
+                );
+            }
+
+            // Step B: Block all other invoices sharing the same business obligation (receivableFingerprint)
+            //         that are NOT already FINANCED (covers different-file but same-obligation fraud attempts)
             await Invoice.updateMany(
                 {
                     receivableFingerprint: invoice.receivableFingerprint,
-                    _id: { $ne: invoice._id }
+                    status: { $ne: 'FINANCED' }
                 },
                 {
                     $set: {
@@ -191,6 +211,32 @@ const financeInvoice = async (req, res, next) => {
                     }
                 }
             );
+
+            // Step C: Propagate BLOCKED to ipfsCID siblings of any newly-blocked invoices
+            //         (e.g. the same file was uploaded under a different fingerprint and got blocked)
+            const blockedSiblings = await Invoice.find(
+                {
+                    receivableFingerprint: invoice.receivableFingerprint,
+                    status: 'BLOCKED',
+                    ipfsCID: { $nin: [null, invoice.ipfsCID] }
+                },
+                { ipfsCID: 1 }
+            );
+            const blockedCIDs = [...new Set(blockedSiblings.map(i => i.ipfsCID).filter(Boolean))];
+            if (blockedCIDs.length > 0) {
+                await Invoice.updateMany(
+                    {
+                        ipfsCID: { $in: blockedCIDs },
+                        status: { $ne: 'FINANCED' }
+                    },
+                    {
+                        $set: {
+                            status: 'BLOCKED',
+                            financeTxHash: receivableBlockchainResult?.txHash || null
+                        }
+                    }
+                );
+            }
         } catch (dbError) {
             console.error(`[CRITICAL INCONSISTENCY] Blockchain success (${docBlockchainResult?.txHash}), but DB update failed:`, dbError.message);
             // In a real bank app, this would trigger an alert or a compensation logic
@@ -241,4 +287,84 @@ const financeInvoice = async (req, res, next) => {
     }
 };
 
-module.exports = { getAllInvoices, verifyInvoice, financeInvoice };
+/**
+ * PATCH /api/lender/invoices/:invoiceId/status
+ * Update invoice status — propagates to all invoices with same ipfsCID
+ */
+const updateInvoiceStatus = async (req, res, next) => {
+    try {
+        const { invoiceId } = req.params;
+        const { status } = req.body;
+
+        const allowedStatuses = ['UPLOADED', 'FINANCED', 'BLOCKED'];
+        if (!status || !allowedStatuses.includes(status.toUpperCase())) {
+            return next(new AppError(`Invalid status. Allowed: ${allowedStatuses.join(', ')}`, 400));
+        }
+        const newStatus = status.toUpperCase();
+
+        // 1. Find invoice and verify lender has access
+        const invoice = await Invoice.findOne({
+            invoiceId,
+            submittedTo: { $in: [req.user.id] }
+        });
+
+        if (!invoice) {
+            return next(new AppError('Invoice not found or not submitted to you', 404));
+        }
+
+        const oldStatus = invoice.status;
+        if (oldStatus === newStatus) {
+            return sendResponse(res, 200, { invoiceId, status: newStatus, updated: 0 }, 'Status unchanged');
+        }
+
+        // 2. Update the target invoice
+        invoice.status = newStatus;
+        if (newStatus === 'FINANCED') {
+            invoice.financedBy = req.user.id;
+            invoice.financedAt = new Date();
+        }
+        await invoice.save();
+
+        // 3. Propagate status to all invoices with the same ipfsCID
+        let siblingCount = 0;
+        if (invoice.ipfsCID) {
+            const updateFields = { status: newStatus };
+            if (newStatus === 'FINANCED') {
+                updateFields.financedBy = req.user.id;
+                updateFields.financedAt = new Date();
+            }
+            const result = await Invoice.updateMany(
+                { ipfsCID: invoice.ipfsCID, _id: { $ne: invoice._id } },
+                { $set: updateFields }
+            );
+            siblingCount = result.modifiedCount || 0;
+        }
+
+        // 4. Audit log
+        await createAuditLog({
+            action: 'invoice_status_updated',
+            performedBy: req.user.id,
+            invoiceId: invoice._id,
+            receivableFingerprint: invoice.receivableFingerprint,
+            details: {
+                invoiceId: invoice.invoiceId,
+                oldStatus,
+                newStatus,
+                siblingCount,
+                ipfsCID: invoice.ipfsCID,
+            },
+            ipAddress: req.ip,
+            requestId: req.requestId,
+        });
+
+        return sendResponse(res, 200, {
+            invoiceId: invoice.invoiceId,
+            status: newStatus,
+            updated: 1 + siblingCount,
+        }, `Status updated to ${newStatus}. ${siblingCount} sibling invoice(s) also updated.`);
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { getAllInvoices, verifyInvoice, financeInvoice, updateInvoiceStatus };

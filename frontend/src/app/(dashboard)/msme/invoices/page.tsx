@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { invoiceAPI, blockchainAPI, UploadedInvoice } from "@/lib/api";
@@ -37,7 +37,7 @@ export default function MSMEInvoicesPage() {
     };
 
     const handleRegisterOnChain = async (inv: UploadedInvoice) => {
-        const token = localStorage.getItem("finovax-token") ?? "";
+        const token = localStorage.getItem("oneflow-token") ?? "";
         if (!token || token.startsWith("mock.")) { toast.error("Real account required."); return; }
         setRegistering(inv.invoiceId);
         try {
@@ -60,7 +60,7 @@ export default function MSMEInvoicesPage() {
         setLoading(true);
         setError("");
         try {
-            const token = localStorage.getItem("finovax-token") ?? "";
+            const token = localStorage.getItem("oneflow-token") ?? "";
             const res   = await invoiceAPI.getMyInvoices(token, { limit: 100 });
             setInvoices(res.data.invoices as UploadedInvoice[]);
             setTotal(res.data.pagination.total);

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { Search, ShieldCheck, ShieldAlert, ShieldX, Cpu, X,
@@ -70,7 +70,7 @@ export const HashVerifier = () => {
     }, []);
 
     const handleVerifyFor = async (q: string) => {
-        const token = localStorage.getItem("finovax-token") ?? "";
+        const token = localStorage.getItem("oneflow-token") ?? "";
         if (!token || token.startsWith("mock.")) {
             toast.error("Lender account required", { description: "Log in with a real lender account to verify invoices." });
             return;
@@ -207,7 +207,7 @@ export const HashVerifier = () => {
                                 <div className="px-4 py-3 bg-mg-elevated/40">
                                     <p className="text-xs text-mg-muted">
                                         {result.kind === "not_found"
-                                            ? "No invoice with this ID or hash exists in the FInovaX ledger. Check the source document."
+                                            ? "No invoice with this ID or hash exists in the OneFlow ledger. Check the source document."
                                             : result.message}
                                     </p>
                                 </div>

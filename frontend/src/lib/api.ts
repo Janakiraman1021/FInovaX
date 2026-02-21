@@ -265,6 +265,13 @@ export const lenderAPI = {
             `/api/v1/lender/finance/${encodeURIComponent(invoiceId)}`,
             { method: "POST", headers: { Authorization: `Bearer ${token}` } }
         ),
+
+    /** PATCH /api/v1/lender/invoices/:invoiceId/status — update invoice status */
+    updateInvoiceStatus: (token: string, invoiceId: string, status: "UPLOADED" | "FINANCED" | "BLOCKED") =>
+        apiRequest<{ success: boolean; message: string; data: { invoiceId: string; status: string; updated: number } }>(
+            `/api/v1/lender/invoices/${encodeURIComponent(invoiceId)}/status`,
+            { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ status }) }
+        ),
 };
 
 export interface AuditLog {
@@ -326,7 +333,7 @@ export const api = {
         login: async (role: string) => {
             await delay(800);
             return {
-                token: `mock.jwt.finovax.${role}`,
+                token: `mock.jwt.oneflow.${role}`,
                 user: { role },
             };
         },

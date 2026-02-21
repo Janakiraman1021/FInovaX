@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useAuth } from "@/context/AuthContext";
 import { Navbar } from "@/components/shared/Navbar";

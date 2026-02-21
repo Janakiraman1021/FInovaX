@@ -63,10 +63,7 @@ const createInvoice = async (req, res, next) => {
         const invoiceHash = hashBuffer(fileBuffer);
 
         // 2. Check for duplicate hash in DB
-        const existingByHash = await Invoice.findOne({ invoiceHash });
-        if (existingByHash) {
-            return next(new AppError('An invoice with this exact file already exists', 409, 'DUPLICATE_FILE_HASH'));
-        }
+        // Hash check removed to allow multiple uploads of the same document
 
         // 3. Generate Receivable Fingerprint
         const receivableFingerprint = generateReceivableFingerprint({
@@ -77,19 +74,10 @@ const createInvoice = async (req, res, next) => {
             invoiceDate: parsedInvoiceDate
         });
 
-        // 4. Check if this specific receivable obligation is already financed
-        const financedReceivable = await Invoice.findOne({
-            receivableFingerprint,
-            status: 'FINANCED'
-        });
-        if (financedReceivable) {
-            return next(new AppError('This business obligation has already been financed', 409, 'RECEIVABLE_ALREADY_FINANCED'));
-        }
-
-        // 5. Upload to IPFS
+        // 4. Upload to IPFS
         const ipfsResult = await uploadToIPFS(fileBuffer, req.file.originalname);
 
-        // 6. Anchor to Blockchain (Informational Registration)
+        // 5. Anchor to Blockchain (Informational Registration)
         let blockchainResult = null;
         try {
             // Register both the document hash and the business obligation fingerprint
@@ -169,9 +157,6 @@ const createInvoice = async (req, res, next) => {
     } catch (error) {
         if (error.name === 'ValidationError') {
             return next(new AppError(Object.values(error.errors).map(val => val.message).join(', '), 400));
-        }
-        if (error.code === 11000) {
-            return next(new AppError('This business obligation metadata has already been uploaded', 409, 'DUPLICATE_RECEIVABLE'));
         }
         next(error);
     }

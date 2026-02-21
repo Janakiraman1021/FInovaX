@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -75,7 +75,7 @@ export default function LandingPage() {
                     </h1>
 
                     <p className="text-lg text-mg-muted max-w-2xl mx-auto mb-10 leading-relaxed">
-                        FInovaX connects MSMEs and lenders on a trustless blockchain layer —
+                        OneFlow connects MSMEs and lenders on a trustless blockchain layer —
                         reducing fraud, accelerating liquidity, and bringing full transparency to trade finance.
                     </p>
 
@@ -154,7 +154,7 @@ export default function LandingPage() {
                         <h2 className="text-3xl font-bold text-mg-silver mb-4 tracking-tight">
                             Ready to transform your receivables?
                         </h2>
-                        <p className="text-mg-muted mb-8 text-sm">Join 800+ MSMEs and 50+ lenders already on the FInovaX network.</p>
+                        <p className="text-mg-muted mb-8 text-sm">Join 800+ MSMEs and 50+ lenders already on the OneFlow network.</p>
                         <Link href="/login" className="mg-btn-primary text-sm inline-flex gap-2">
                             Start for Free
                             <ArrowRight className="w-4 h-4" />
@@ -166,7 +166,7 @@ export default function LandingPage() {
             {/* ── Footer ── */}
             <footer className="border-t border-mg-lavender/10 py-8 px-8 text-center">
                 <p className="text-xs text-mg-dim">
-                    © 2026 FInovaX · Built on <span className="text-mg-lavender">Polygon zkEVM</span> · All rights reserved
+                    © 2026 OneFlow · Built on <span className="text-mg-lavender">Polygon zkEVM</span> · All rights reserved
                 </p>
             </footer>
         </div>

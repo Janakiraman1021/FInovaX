@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { auditorAPI, AuditLog } from "@/lib/api";
@@ -58,7 +58,7 @@ export default function AuditFile() {
         setLoading(true);
         setError("");
         try {
-            const token = localStorage.getItem("finovax-token") ?? "";
+            const token = localStorage.getItem("oneflow-token") ?? "";
             const res   = await auditorAPI.getAuditLogs(token, {
                 page: pg,
                 limit: PAGE_SIZE,

@@ -1,6 +1,6 @@
 "use client";
 
-import { InvoiceUploader } from "@/components/finovax/InvoiceUploader";
+import { InvoiceUploader } from "@/components/oneflow/InvoiceUploader";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
