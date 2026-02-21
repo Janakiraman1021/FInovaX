@@ -72,4 +72,21 @@ const getInvoiceAuditLogs = async (req, res, next) => {
     }
 };
 
-module.exports = { getAuditLogs, getInvoiceAuditLogs };
+const getReceivableAuditLogs = async (req, res, next) => {
+    try {
+        const { fingerprint } = req.params;
+
+        const logs = await AuditLog.find({ receivableFingerprint: fingerprint })
+            .populate('performedBy', 'name email role')
+            .sort({ createdAt: -1 });
+
+        res.json({
+            success: true,
+            data: { logs },
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { getAuditLogs, getInvoiceAuditLogs, getReceivableAuditLogs };

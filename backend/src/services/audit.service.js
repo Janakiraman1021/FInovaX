@@ -11,12 +11,13 @@ const AuditLog = require('../models/AuditLog');
  * @param {string} [params.ipAddress] - Client IP address.
  * @returns {Promise<object>}
  */
-const createAuditLog = async ({ action, performedBy, invoiceId = null, txHash = null, details = {}, ipAddress = null }) => {
+const createAuditLog = async ({ action, performedBy, invoiceId = null, receivableFingerprint = null, txHash = null, details = {}, ipAddress = null }) => {
     try {
         const log = await AuditLog.create({
             eventType: action,
             performedBy,
             invoiceId,
+            receivableFingerprint,
             txHash,
             details,
             ipAddress,

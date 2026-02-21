@@ -4,7 +4,7 @@ const User = require('../models/User');
 const Invoice = require('../models/Invoice');
 const AuditLog = require('../models/AuditLog');
 const crypto = require('crypto');
-const { hashBuffer } = require('../utils/hash');
+const { hashBuffer, generateReceivableFingerprint } = require('../utils/hash');
 
 // Load env vars
 dotenv.config();
@@ -52,12 +52,34 @@ const runSeed = async () => {
         const hash1 = hashBuffer(dummyBuffer1);
         const hash2 = hashBuffer(dummyBuffer2);
 
-        // 4. Seed structured demo invoices
+        // 4. Metadata for fingerprints
+        const metadata1 = {
+            sellerGSTIN: '27AAAAA0000A1Z5',
+            buyerGSTIN: '27BBBBB1111B1Z5',
+            invoiceAmount: 50000,
+            poReference: 'PO-2023-001',
+            invoiceDate: '2023-10-01'
+        };
+
+        const metadata2 = {
+            sellerGSTIN: '27AAAAA0000A1Z5',
+            buyerGSTIN: '27CCCCC2222C1Z5',
+            invoiceAmount: 120000,
+            poReference: 'PO-2023-999',
+            invoiceDate: '2023-11-15'
+        };
+
+        const fingerprint1 = generateReceivableFingerprint(metadata1);
+        const fingerprint2 = generateReceivableFingerprint(metadata2);
+
+        // 5. Seed structured demo invoices
         const invoices = [
             {
                 invoiceId: `INV-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
                 uploadedBy: msme._id,
-                amount: 50000,
+                ...metadata1,
+                amount: metadata1.invoiceAmount,
+                receivableFingerprint: fingerprint1,
                 currency: 'INR',
                 description: 'Server hardware supplies for Q3',
                 invoiceHash: hash1,
@@ -68,15 +90,17 @@ const runSeed = async () => {
             {
                 invoiceId: `INV-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
                 uploadedBy: msme._id,
-                amount: 120000,
+                ...metadata2,
+                amount: metadata2.invoiceAmount,
+                receivableFingerprint: fingerprint2,
                 currency: 'USD',
                 description: 'Export goods tracking #8932',
                 invoiceHash: hash2,
                 ipfsCID: 'QmDummyHashString987654321',
                 originalFileName: 'export_invoice_99.pdf',
-                status: 'FINANCED', // Pre-financed to show the duplicate blocking feature if Lender B tries
+                status: 'FINANCED', // Pre-financed
                 financedBy: lenderA._id,
-                financedAt: new Date(Date.now() - 86400000), // 1 day ago
+                financedAt: new Date(Date.now() - 86400000),
                 financeTxHash: '0xDummyTxHashSimulatingBlockchainActionToDemonstrateBlockingBehavior',
                 blockchainTxHash: '0xDummyTxHashSimulatingRegistration',
             }

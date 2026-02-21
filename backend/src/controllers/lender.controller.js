@@ -1,6 +1,6 @@
 const Invoice = require('../models/Invoice');
 const AppError = require('../utils/AppError');
-const { verifyInvoiceOnChain, markInvoiceFinancedOnChain } = require('../services/blockchain.service');
+const { verifyInvoiceOnChain, markInvoiceFinancedOnChain, registerReceivableOnChain, verifyReceivableOnChain } = require('../services/blockchain.service');
 const { createAuditLog } = require('../services/audit.service');
 
 /**
@@ -14,32 +14,66 @@ const verifyInvoice = async (req, res, next) => {
         // Find by invoiceId or invoiceHash (since it could be either)
         const invoice = await Invoice.findOne({
             $or: [{ invoiceId }, { invoiceHash: invoiceId }]
-        })
-            .populate('uploadedBy', 'name email organization')
-            .populate('financedBy', 'name email organization');
+        });
 
         if (!invoice) {
-            return next(new AppError('Invoice not found in database', 404));
+            return res.status(404).json({
+                success: false,
+                data: {
+                    verification: {
+                        status: 'NOT_FOUND',
+                        valid: false
+                    }
+                }
+            });
         }
+
+        // Check if receivable obligation is already financed by ANY document
+        const financedAny = await Invoice.findOne({
+            receivableFingerprint: invoice.receivableFingerprint,
+            status: 'FINANCED'
+        });
 
         // On-chain verification
         let onChainStatus = null;
+        let onChainReceivableStatus = null;
         try {
-            onChainStatus = await verifyInvoiceOnChain(invoice.invoiceHash);
+            [onChainStatus, onChainReceivableStatus] = await Promise.all([
+                verifyInvoiceOnChain(invoice.invoiceHash),
+                verifyReceivableOnChain(invoice.receivableFingerprint)
+            ]);
         } catch (bcError) {
             console.warn('On-chain verification unavailable:', bcError.message);
         }
 
-        const canFinance =
-            invoice.status !== 'FINANCED' && (!onChainStatus || !onChainStatus.financed) && (onChainStatus && onChainStatus.registered);
+        const isFinanced =
+            invoice.status === 'FINANCED' ||
+            (financedAny && financedAny.status === 'FINANCED') ||
+            (onChainStatus && onChainStatus.financed) ||
+            (onChainReceivableStatus && onChainReceivableStatus.financed) ||
+            false;
 
-        const isDuplicate = invoice.status === 'FINANCED' || (onChainStatus && onChainStatus.financed) || false;
+        let verificationLabel = 'VALID';
+        if (isFinanced) {
+            verificationLabel = 'RECEIVABLE_ALREADY_FINANCED';
+        }
+
+        const canFinance =
+            !isFinanced &&
+            (onChainStatus && onChainStatus.registered) &&
+            invoice.status !== 'BLOCKED';
 
         await createAuditLog({
             action: 'invoice_verified',
             performedBy: req.user.id,
             invoiceId: invoice._id,
-            details: { valid: true, duplicate: isDuplicate, financed: isDuplicate, onChainStatus },
+            receivableFingerprint: invoice.receivableFingerprint,
+            details: {
+                status: verificationLabel,
+                valid: !isFinanced,
+                duplicate: isFinanced,
+                onChainStatus
+            },
             ipAddress: req.ip,
         });
 
@@ -47,20 +81,18 @@ const verifyInvoice = async (req, res, next) => {
             success: true,
             data: {
                 invoice: {
-                    id: invoice._id,
                     invoiceId: invoice.invoiceId,
                     amount: invoice.amount,
                     currency: invoice.currency,
                     status: invoice.status,
                     invoiceHash: invoice.invoiceHash,
-                    uploadedBy: invoice.uploadedBy,
-                    financedBy: invoice.financedBy,
                     financedAt: invoice.financedAt,
                 },
                 verification: {
-                    valid: true,
-                    duplicate: isDuplicate,
-                    financed: isDuplicate,
+                    status: verificationLabel,
+                    valid: !isFinanced,
+                    duplicate: isFinanced,
+                    financed: isFinanced,
                     registeredOnChain: onChainStatus ? onChainStatus.registered : false
                 },
                 canFinance,
@@ -86,49 +118,90 @@ const financeInvoice = async (req, res, next) => {
             return next(new AppError('Invoice not found', 404));
         }
 
-        // Block duplicate financing
+        // Block duplicate financing (Document level)
         if (invoice.status === 'FINANCED') {
-            await createAuditLog({
-                action: 'finance_blocked_duplicate',
-                performedBy: req.user.id,
-                invoiceId: invoice._id,
-                details: { reason: 'Already financed', financedBy: invoice.financedBy },
-                ipAddress: req.ip,
-            });
+            return next(new AppError('This invoice document has already been financed', 409));
+        }
+        if (invoice.status === 'BLOCKED') {
+            return next(new AppError('This invoice is BLOCKED because another document for the same receivable has been financed', 409));
+        }
 
-            return next(new AppError('This invoice has already been financed', 409));
+        // Block duplicate financing (Receivable level)
+        const existingFinanced = await Invoice.findOne({
+            receivableFingerprint: invoice.receivableFingerprint,
+            status: 'FINANCED'
+        });
+        if (existingFinanced) {
+            return next(new AppError('RECEIVABLE_ALREADY_FINANCED: The business obligation for this invoice has already been financed via another document', 409));
         }
 
         // Check on-chain status
-        const onChainStatus = await verifyInvoiceOnChain(invoice.invoiceHash);
+        const [onChainStatus, onChainReceivableStatus] = await Promise.all([
+            verifyInvoiceOnChain(invoice.invoiceHash),
+            verifyReceivableOnChain(invoice.receivableFingerprint)
+        ]);
+
         if (!onChainStatus || !onChainStatus.registered) {
             return next(new AppError('Invoice must be registered on the blockchain before financing', 422));
         }
-        if (onChainStatus.financed) {
-            return next(new AppError('This invoice has already been marked as financed on the blockchain', 409));
+        if (onChainStatus.financed || (onChainReceivableStatus && onChainReceivableStatus.financed)) {
+            return next(new AppError('RECEIVABLE_ALREADY_FINANCED: This obligation is already marked as financed on the blockchain', 409));
         }
 
         // Mark on-chain
-        let blockchainResult = null;
+        let docBlockchainResult = null;
+        let receivableBlockchainResult = null;
         try {
-            blockchainResult = await markInvoiceFinancedOnChain(invoice.invoiceHash);
+            // Anchor both document AND receivable fingerprint
+            [docBlockchainResult, receivableBlockchainResult] = await Promise.all([
+                markInvoiceFinancedOnChain(invoice.invoiceHash),
+                registerReceivableOnChain(invoice.receivableFingerprint)
+            ]);
         } catch (bcError) {
             console.warn('Blockchain finance marking failed:', bcError.message);
             return next(new AppError(`Blockchain finance marking failed: ${bcError.message}`, 500));
         }
 
-        // Update DB
+        // Update DB — mark this document as FINANCED
         invoice.status = 'FINANCED';
         invoice.financedBy = req.user.id;
         invoice.financedAt = new Date();
-        invoice.financeTxHash = blockchainResult?.txHash || null;
+        invoice.financeTxHash = docBlockchainResult?.txHash || null;
         await invoice.save();
+
+        // Mark ALL OTHER invoices with same receivableFingerprint as BLOCKED
+        await Invoice.updateMany(
+            {
+                receivableFingerprint: invoice.receivableFingerprint,
+                _id: { $ne: invoice._id }
+            },
+            {
+                $set: {
+                    status: 'BLOCKED',
+                    financeTxHash: receivableBlockchainResult?.txHash || null
+                }
+            }
+        );
+
+        await createAuditLog({
+            action: 'RECEIVABLE_FINANCED',
+            performedBy: req.user.id,
+            invoiceId: invoice._id,
+            receivableFingerprint: invoice.receivableFingerprint,
+            txHash: receivableBlockchainResult?.txHash || null,
+            details: {
+                invoiceId: invoice.invoiceId,
+                receivableFingerprint: invoice.receivableFingerprint,
+            },
+            ipAddress: req.ip,
+        });
 
         await createAuditLog({
             action: 'invoice_financed',
             performedBy: req.user.id,
             invoiceId: invoice._id,
-            txHash: blockchainResult?.txHash || null,
+            receivableFingerprint: invoice.receivableFingerprint,
+            txHash: docBlockchainResult?.txHash || null,
             details: {
                 invoiceId: invoice.invoiceId,
                 amount: invoice.amount,

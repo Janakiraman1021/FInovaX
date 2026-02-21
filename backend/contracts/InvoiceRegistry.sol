@@ -25,6 +25,12 @@ contract InvoiceRegistry {
     /// @notice Addresses authorised to call financeInvoice
     mapping(address => bool) public authorizedLenders;
 
+    /// @notice Whether a receivableFingerprint has been financed
+    mapping(bytes32 => bool) public receivableFinanced;
+
+    /// @notice The lender address that financed a given receivableFingerprint
+    mapping(bytes32 => address) public receivableFinancedBy;
+
     // ─── Events (immutable audit trail) ───────────────────────────────
 
     event InvoiceRegistered(
@@ -40,8 +46,20 @@ contract InvoiceRegistry {
         uint256 timestamp
     );
 
+    event ReceivableFinanced(
+        bytes32 indexed receivableFingerprint,
+        address indexed lender,
+        uint256 timestamp
+    );
+
     event DuplicateFinancingAttempt(
         bytes32 indexed invoiceHash,
+        address indexed attemptedBy,
+        uint256 timestamp
+    );
+
+    event DuplicateReceivableFinancingAttempt(
+        bytes32 indexed receivableFingerprint,
         address indexed attemptedBy,
         uint256 timestamp
     );
@@ -124,6 +142,23 @@ contract InvoiceRegistry {
         emit InvoiceFinanced(invoiceHash, msg.sender, block.timestamp);
     }
 
+    /**
+     * @notice Register and lock a receivable fingerprint. 
+     *         Prevents double-financing of the same business obligation.
+     * @param receivableFingerprint SHA-256 hash of normalized receivable metadata.
+     */
+    function registerReceivable(bytes32 receivableFingerprint) external onlyAuthorizedLender {
+        if (receivableFinanced[receivableFingerprint]) {
+            emit DuplicateReceivableFinancingAttempt(receivableFingerprint, msg.sender, block.timestamp);
+            return;
+        }
+
+        receivableFinanced[receivableFingerprint] = true;
+        receivableFinancedBy[receivableFingerprint] = msg.sender;
+
+        emit ReceivableFinanced(receivableFingerprint, msg.sender, block.timestamp);
+    }
+
     // ─── View Functions ───────────────────────────────────────────────
 
     /**
@@ -141,10 +176,24 @@ contract InvoiceRegistry {
     }
 
     /**
+     * @notice Check if a receivable has been financed.
+     */
+    function isReceivableFinanced(bytes32 receivableFingerprint) external view returns (bool) {
+        return receivableFinanced[receivableFingerprint];
+    }
+
+    /**
      * @notice Get the lender address that financed an invoice.
      * @return lender Address of the financing lender (address(0) if not financed).
      */
     function getFinancier(bytes32 invoiceHash) external view returns (address lender) {
         return financedBy[invoiceHash];
+    }
+
+    /**
+     * @notice Get the lender address that financed a receivable.
+     */
+    function getReceivableFinancier(bytes32 receivableFingerprint) external view returns (address lender) {
+        return receivableFinancedBy[receivableFingerprint];
     }
 }

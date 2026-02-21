@@ -72,10 +72,47 @@ const invoiceSchema = new mongoose.Schema(
             type: Date,
             default: null,
         },
+        // Receivable Fingerprint Integration
+        receivableFingerprint: {
+            type: String,
+            required: [true, 'Receivable fingerprint is required'],
+            index: true,
+        },
+        sellerGSTIN: {
+            type: String,
+            trim: true,
+            uppercase: true,
+        },
+        buyerGSTIN: {
+            type: String,
+            trim: true,
+            uppercase: true,
+        },
+        // invoiceAmount is already defined above, reuse or define metadata specific if needed
+        // Here we use the main amount field for fingerprinting
+        invoiceDate: {
+            type: Date,
+            required: [true, 'Invoice date is required'],
+        },
+        poReference: {
+            type: String,
+            trim: true,
+            uppercase: true,
+        },
+        dueDate: {
+            type: Date,
+            default: null,
+        },
     },
     {
         timestamps: true,
     }
+);
+
+// Compound unique index for the business obligation
+invoiceSchema.index(
+    { sellerGSTIN: 1, buyerGSTIN: 1, amount: 1, poReference: 1, invoiceDate: 1 },
+    { unique: true, name: 'receivable_uniqueness_index' }
 );
 
 // No need for compound index on invoiceId as it will be unique UUID

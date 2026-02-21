@@ -6,7 +6,9 @@ const AuditLog = require('../models/AuditLog');
 const CONTRACT_ABI = [
     'event InvoiceRegistered(bytes32 indexed invoiceHash, string invoiceId, address indexed registeredBy, uint256 timestamp)',
     'event InvoiceFinanced(bytes32 indexed invoiceHash, address indexed lender, uint256 timestamp)',
+    'event ReceivableFinanced(bytes32 indexed receivableFingerprint, address indexed lender, uint256 timestamp)',
     'event DuplicateFinancingAttempt(bytes32 indexed invoiceHash, address indexed attemptedBy, uint256 timestamp)',
+    'event DuplicateReceivableFinancingAttempt(bytes32 indexed receivableFingerprint, address indexed attemptedBy, uint256 timestamp)',
 ];
 
 let provider = null;
@@ -89,6 +91,49 @@ const initEventListeners = () => {
                 });
             } catch (err) {
                 console.error('Error processing DuplicateFinancingAttempt event:', err.message);
+            }
+        });
+
+        // Listen: ReceivableFinanced
+        contract.on('ReceivableFinanced', async (fingerprint, lender, timestamp, event) => {
+            try {
+                console.log(`[Event] ReceivableFinanced: ${fingerprint} by ${lender}`);
+                const cleanFingerprint = fingerprint.replace('0x', '');
+
+                // There might be multiple invoices for one receivable fingerprint
+                const invoices = await Invoice.find({ receivableFingerprint: cleanFingerprint });
+
+                await AuditLog.create({
+                    eventType: 'RECEIVABLE_FINANCED',
+                    actorAddress: lender,
+                    receivableFingerprint: cleanFingerprint,
+                    txHash: event.log.transactionHash,
+                    details: {
+                        fingerprint: cleanFingerprint,
+                        timestamp: timestamp.toString(),
+                        affectedInvoices: invoices.map(i => i.invoiceId)
+                    },
+                });
+            } catch (err) {
+                console.error('Error processing ReceivableFinanced event:', err.message);
+            }
+        });
+
+        // Listen: DuplicateReceivableFinancingAttempt
+        contract.on('DuplicateReceivableFinancingAttempt', async (fingerprint, attemptedBy, timestamp, event) => {
+            try {
+                console.warn(`[Event] DuplicateReceivableFinancingAttempt: ${fingerprint} by ${attemptedBy}`);
+                const cleanFingerprint = fingerprint.replace('0x', '');
+
+                await AuditLog.create({
+                    eventType: 'DUPLICATE_RECEIVABLE_FINANCING_ATTEMPT',
+                    actorAddress: attemptedBy,
+                    receivableFingerprint: cleanFingerprint,
+                    txHash: event.log.transactionHash,
+                    details: { fingerprint: cleanFingerprint, timestamp: timestamp.toString() },
+                });
+            } catch (err) {
+                console.error('Error processing DuplicateReceivableFinancingAttempt event:', err.message);
             }
         });
 

@@ -1,0 +1,13 @@
+const { v4: uuidv4 } = require('uuid');
+
+/**
+ * Middleware to attach a unique requestId to every request.
+ */
+const requestIdMiddleware = (req, res, next) => {
+    const requestId = req.headers['x-request-id'] || uuidv4();
+    req.requestId = requestId;
+    res.setHeader('x-request-id', requestId);
+    next();
+};
+
+module.exports = requestIdMiddleware;

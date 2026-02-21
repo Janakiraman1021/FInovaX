@@ -16,7 +16,13 @@ const auditLogSchema = new mongoose.Schema(
                 // On-chain event types:
                 'InvoiceRegistered',
                 'InvoiceFinanced',
-                'DuplicateFinancingAttempt'
+                'DuplicateFinancingAttempt',
+                // Receivable-level events
+                'RECEIVABLE_REGISTERED',
+                'RECEIVABLE_FINANCED',
+                'RECEIVABLE_BLOCKED',
+                'RECEIVABLE_VERIFIED',
+                'DUPLICATE_RECEIVABLE_FINANCING_ATTEMPT'
             ],
             index: true,
         },
@@ -28,6 +34,11 @@ const auditLogSchema = new mongoose.Schema(
         },
         actorAddress: {
             type: String, // Stored for on-chain events where we only know the hex address
+            default: null,
+            index: true,
+        },
+        receivableFingerprint: {
+            type: String,
             default: null,
             index: true,
         },

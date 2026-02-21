@@ -2,7 +2,7 @@ const multer = require('multer');
 const crypto = require('crypto');
 const Invoice = require('../models/Invoice');
 const AppError = require('../utils/AppError');
-const { hashBuffer } = require('../utils/hash');
+const { hashBuffer, generateReceivableFingerprint } = require('../utils/hash');
 const { uploadToIPFS } = require('../services/ipfs.service');
 const { createAuditLog } = require('../services/audit.service');
 
@@ -29,7 +29,16 @@ const createInvoice = async (req, res, next) => {
             return next(new AppError('Invoice PDF file is required', 400));
         }
 
-        const { amount, currency, description } = req.body;
+        const {
+            amount,
+            currency,
+            description,
+            sellerGSTIN,
+            buyerGSTIN,
+            poReference,
+            invoiceDate,
+            dueDate
+        } = req.body;
         const fileBuffer = req.file.buffer;
 
         // Generate unique invoiceId
@@ -41,13 +50,31 @@ const createInvoice = async (req, res, next) => {
         // 2. Check for duplicate hash in DB
         const existingByHash = await Invoice.findOne({ invoiceHash });
         if (existingByHash) {
-            return next(new AppError('An invoice with this exact file already exists (duplicate hash)', 409));
+            return next(new AppError('DUPLICATE_FILE_HASH: An invoice with this exact file already exists', 409));
         }
 
-        // 3. Upload to IPFS
+        // 3. Generate Receivable Fingerprint
+        const receivableFingerprint = generateReceivableFingerprint({
+            sellerGSTIN,
+            buyerGSTIN,
+            invoiceAmount: amount,
+            poReference,
+            invoiceDate
+        });
+
+        // 4. Check if this specific receivable obligation is already financed
+        const financedReceivable = await Invoice.findOne({
+            receivableFingerprint,
+            status: 'FINANCED'
+        });
+        if (financedReceivable) {
+            return next(new AppError('RECEIVABLE_ALREADY_FINANCED: This business obligation has already been financed', 409));
+        }
+
+        // 5. Upload to IPFS
         const ipfsResult = await uploadToIPFS(fileBuffer, req.file.originalname);
 
-        // 4. Save invoice metadata to MongoDB (DO NOT WRITE TO BLOCKCHAIN YET)
+        // 6. Save invoice metadata to MongoDB (DO NOT WRITE TO BLOCKCHAIN YET)
         const invoice = await Invoice.create({
             invoiceId,
             uploadedBy: req.user.id,
@@ -55,6 +82,12 @@ const createInvoice = async (req, res, next) => {
             currency: currency || 'INR',
             description,
             invoiceHash,
+            receivableFingerprint,
+            sellerGSTIN,
+            buyerGSTIN,
+            poReference,
+            invoiceDate,
+            dueDate,
             ipfsCID: ipfsResult.cid,
             originalFileName: req.file.originalname,
             status: 'UPLOADED',
@@ -65,7 +98,23 @@ const createInvoice = async (req, res, next) => {
             action: 'invoice_uploaded',
             performedBy: req.user.id,
             invoiceId: invoice._id,
-            details: { invoiceId, invoiceHash, ipfsCID: ipfsResult.cid },
+            receivableFingerprint: invoice.receivableFingerprint,
+            details: {
+                invoiceId,
+                invoiceHash,
+                receivableFingerprint,
+                ipfsCID: ipfsResult.cid
+            },
+            ipAddress: req.ip,
+        });
+
+        // 8. Log receivable registration (internal audit)
+        await createAuditLog({
+            action: 'RECEIVABLE_REGISTERED',
+            performedBy: req.user.id,
+            invoiceId: invoice._id,
+            receivableFingerprint: invoice.receivableFingerprint,
+            details: { receivableFingerprint },
             ipAddress: req.ip,
         });
 
@@ -76,6 +125,7 @@ const createInvoice = async (req, res, next) => {
                 invoice: {
                     invoiceId: invoice.invoiceId,
                     invoiceHash: invoice.invoiceHash,
+                    receivableFingerprint: invoice.receivableFingerprint,
                     ipfsCID: invoice.ipfsCID,
                     uploadedBy: invoice.uploadedBy,
                     status: invoice.status,
@@ -88,6 +138,9 @@ const createInvoice = async (req, res, next) => {
     } catch (error) {
         if (error.name === 'ValidationError') {
             return next(new AppError(Object.values(error.errors).map(val => val.message).join(', '), 400));
+        }
+        if (error.code === 11000) {
+            return next(new AppError('DUPLICATE_RECEIVABLE: This business obligation metadata has already been uploaded', 409));
         }
         next(error);
     }

@@ -4,14 +4,19 @@ const { ethers } = require('ethers');
 const CONTRACT_ABI = [
     'function registerInvoice(bytes32 invoiceHash, string invoiceId) external',
     'function financeInvoice(bytes32 invoiceHash) external',
+    'function registerReceivable(bytes32 receivableFingerprint) external',
     'function isRegistered(bytes32 invoiceHash) external view returns (bool)',
     'function isFinanced(bytes32 invoiceHash) external view returns (bool)',
+    'function isReceivableFinanced(bytes32 receivableFingerprint) external view returns (bool)',
     'function getFinancier(bytes32 invoiceHash) external view returns (address)',
+    'function getReceivableFinancier(bytes32 receivableFingerprint) external view returns (address)',
     'function authorizeLender(address lender) external',
     'function revokeLender(address lender) external',
     'event InvoiceRegistered(bytes32 indexed invoiceHash, string invoiceId, address indexed registeredBy, uint256 timestamp)',
     'event InvoiceFinanced(bytes32 indexed invoiceHash, address indexed lender, uint256 timestamp)',
+    'event ReceivableFinanced(bytes32 indexed receivableFingerprint, address indexed lender, uint256 timestamp)',
     'event DuplicateFinancingAttempt(bytes32 indexed invoiceHash, address indexed attemptedBy, uint256 timestamp)',
+    'event DuplicateReceivableFinancingAttempt(bytes32 indexed receivableFingerprint, address indexed attemptedBy, uint256 timestamp)',
 ];
 
 let provider = null;
@@ -130,8 +135,55 @@ const verifyInvoiceOnChain = async (fileHash) => {
     }
 };
 
+/**
+ * Register a receivable fingerprint on the blockchain.
+ * @param {string} fingerprint - SHA-256 hex hash of receivable metadata.
+ */
+const registerReceivableOnChain = async (fingerprint) => {
+    if (!contract && !initBlockchain()) {
+        return null;
+    }
+
+    try {
+        const hashBytes = toBytes32(fingerprint);
+        const tx = await contract.registerReceivable(hashBytes);
+        const receipt = await tx.wait();
+
+        console.log(`✅ Receivable registered on-chain: ${receipt.hash}`);
+        return { txHash: receipt.hash };
+    } catch (error) {
+        console.error('Blockchain registerReceivable error:', error.message);
+        throw new Error(`Blockchain receivable registration failed: ${error.reason || error.message}`);
+    }
+};
+
+/**
+ * Verify if a receivable fingerprint is financed on-chain.
+ */
+const verifyReceivableOnChain = async (fingerprint) => {
+    if (!contract && !initBlockchain()) {
+        return null;
+    }
+
+    try {
+        const hashBytes = toBytes32(fingerprint);
+        const financed = await contract.isReceivableFinanced(hashBytes);
+        const financier = await contract.getReceivableFinancier(hashBytes);
+
+        return {
+            financed,
+            financier: (financier === ethers.ZeroAddress || !financier) ? null : financier,
+        };
+    } catch (error) {
+        console.error('Blockchain receivable verify error:', error.message);
+        throw new Error(`Blockchain receivable verification failed: ${error.message}`);
+    }
+};
+
 module.exports = {
     registerInvoiceOnChain,
     markInvoiceFinancedOnChain,
     verifyInvoiceOnChain,
+    registerReceivableOnChain,
+    verifyReceivableOnChain,
 };
