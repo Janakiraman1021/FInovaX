@@ -103,7 +103,7 @@ const financeInvoice = async (req, res, next) => {
 
         // 1. Validate invoice exists and is assigned to this lender
         const invoice = await Invoice.findOne({
-            _id: invoiceId,
+            invoiceId: invoiceId,
             submittedTo: req.user.id
         });
 

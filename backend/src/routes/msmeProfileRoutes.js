@@ -14,7 +14,7 @@ const router = express.Router();
 router.use(protect);
 
 // Only MSMEs can access these routes
-router.use(authorize(["msme"]));
+router.use(authorize("msme"));
 
 // GET /api/msme-profile - Get current user's MSME profile
 router.get("/", getMSMEProfile);

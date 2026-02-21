@@ -2,10 +2,10 @@ const MSMEProfile = require("../models/MSMEProfile");
 
 const getMSMEProfile = async (req, res) => {
   try {
-    const userId = req.user?.userId;
-    
+    const userId = req.user?.id;
+
     const profile = await MSMEProfile.findOne({ userId });
-    
+
     if (!profile) {
       return res.status(404).json({
         success: false,
@@ -28,13 +28,8 @@ const getMSMEProfile = async (req, res) => {
 
 const createOrUpdateMSMEProfile = async (req, res) => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const {
-      sellerGSTIN,
-      buyerGSTIN,
-      invoiceAmount,
-      invoiceDate,
-      poReference,
       companyName,
       contactPerson,
       email,
@@ -42,20 +37,11 @@ const createOrUpdateMSMEProfile = async (req, res) => {
       address,
     } = req.body;
 
-    // Validation
-    if (!sellerGSTIN || !buyerGSTIN) {
+    // Validation (Identity is already verified by middleware)
+    if (!companyName) {
       return res.status(400).json({
         success: false,
-        message: "Seller GSTIN and Buyer GSTIN are required",
-      });
-    }
-
-    // GSTIN validation (15 characters alphanumeric)
-    const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-    if (!gstinRegex.test(sellerGSTIN) || !gstinRegex.test(buyerGSTIN)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid GSTIN format",
+        message: "Company name is required",
       });
     }
 
@@ -63,11 +49,6 @@ const createOrUpdateMSMEProfile = async (req, res) => {
 
     if (profile) {
       // Update existing profile
-      profile.sellerGSTIN = sellerGSTIN;
-      profile.buyerGSTIN = buyerGSTIN;
-      profile.invoiceAmount = invoiceAmount;
-      profile.invoiceDate = invoiceDate;
-      profile.poReference = poReference;
       profile.companyName = companyName;
       profile.contactPerson = contactPerson;
       profile.email = email;
@@ -86,11 +67,6 @@ const createOrUpdateMSMEProfile = async (req, res) => {
       // Create new profile
       profile = await MSMEProfile.create({
         userId,
-        sellerGSTIN,
-        buyerGSTIN,
-        invoiceAmount,
-        invoiceDate,
-        poReference,
         companyName,
         contactPerson,
         email,
@@ -115,15 +91,10 @@ const createOrUpdateMSMEProfile = async (req, res) => {
 
 const updateProfileField = async (req, res) => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const { field, value } = req.body;
 
     const allowedFields = [
-      "sellerGSTIN",
-      "buyerGSTIN",
-      "invoiceAmount",
-      "invoiceDate",
-      "poReference",
       "companyName",
       "contactPerson",
       "email",
@@ -167,7 +138,7 @@ const updateProfileField = async (req, res) => {
 
 const deleteMSMEProfile = async (req, res) => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
 
     const profile = await MSMEProfile.findOneAndDelete({ userId });
 

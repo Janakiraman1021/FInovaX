@@ -9,30 +9,11 @@ const MSMEProfileSchema = new Schema(
       required: true,
       unique: true,
     },
-    sellerGSTIN: {
-      type: String,
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       required: true,
-      uppercase: true,
-      trim: true,
-      match: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
-    },
-    buyerGSTIN: {
-      type: String,
-      required: true,
-      uppercase: true,
-      trim: true,
-      match: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
-    },
-    invoiceAmount: {
-      type: Number,
-      min: 0,
-    },
-    invoiceDate: {
-      type: Date,
-    },
-    poReference: {
-      type: String,
-      trim: true,
+      unique: true,
     },
     companyName: {
       type: String,
@@ -53,11 +34,8 @@ const MSMEProfileSchema = new Schema(
       trim: true,
     },
     address: {
-      street: String,
-      city: String,
-      state: String,
-      pincode: String,
-      country: { type: String, default: "India" },
+      type: String,
+      trim: true,
     },
   },
   {
@@ -65,9 +43,6 @@ const MSMEProfileSchema = new Schema(
   }
 );
 
-// Index for faster lookups
-MSMEProfileSchema.index({ userId: 1 });
-MSMEProfileSchema.index({ sellerGSTIN: 1 });
-MSMEProfileSchema.index({ buyerGSTIN: 1 });
+// Index for faster lookups (userId is already indexed due to unique: true)
 
 module.exports = mongoose.model("MSMEProfile", MSMEProfileSchema);
