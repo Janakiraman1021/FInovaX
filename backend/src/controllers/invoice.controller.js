@@ -72,21 +72,40 @@ const createInvoice = async (req, res, next) => {
             invoiceDate: parsedInvoiceDate
         });
 
-        // ✅ ACTION 1 & 4 RULE: Conditional Validation
+        // 🔍 OneFlow Data Integrity & Discovery Rules
+        // ---------------------------------------------------------
+        // File hash enforces data integrity. (Rule 1)
+        // Receivable fingerprint enforces financing uniqueness. (Rule 2)
+        // ---------------------------------------------------------
+
         let invoice = null;
         let isExistingInvoice = false;
 
+        // 🛡️ RULE 1: SAME FILE + DIFFERENT RECEIVABLE FIELDS (BLOCK)
+        // Enforcement must be global to ensure document truth.
+        const globalExistingFile = await Invoice.findOne({ invoiceHash });
+        if (globalExistingFile) {
+            if (globalExistingFile.receivableFingerprint !== receivableFingerprint) {
+                return next(new AppError(
+                    "Invoice file does not match declared receivable details",
+                    400,
+                    "INCONSISTENT_INVOICE_DATA"
+                ));
+            }
+        }
+
+        // Logic for handling upload/submission based on context
         if (!submittedTo) {
             // Initial Upload (Action 1): Check if THIS USER uploaded this file before
-            const existingFile = await Invoice.findOne({ 
-                invoiceHash,
-                uploadedBy: req.user.id 
-            });
-            if (existingFile) {
-                return next(new AppError('You have already uploaded this file. To submit it to a lender, use the "Submit to Lender" option from your invoice list.', 409, 'DUPLICATE_FILE_HASH'));
+            if (globalExistingFile && globalExistingFile.uploadedBy.toString() === req.user.id) {
+                return next(new AppError(
+                    'You have already uploaded this file. To submit it to a lender, use the "Submit to Lender" option from your invoice list.',
+                    409,
+                    'DUPLICATE_FILE_HASH'
+                ));
             }
         } else {
-            // Upload + Submit (Action 4): Allow parallel discovery to different lenders
+            // Upload + Submit (Action 4): Allow parallel discovery (Rule 2)
             // Check if this user already has an invoice with this receivableFingerprint
             const existingInvoice = await Invoice.findOne({
                 receivableFingerprint,
@@ -113,28 +132,31 @@ const createInvoice = async (req, res, next) => {
                     ));
                 }
 
-                // Different lender - reuse existing invoice and add new submission
-                invoice = existingInvoice;
-                isExistingInvoice = true;
+                // Different lender - reuse existing invoice if file is the same, 
+                // OR create new one if file is different (Rule 2)
+                if (existingInvoice.invoiceHash === invoiceHash) {
+                    invoice = existingInvoice;
+                    isExistingInvoice = true;
 
-                // Add lender to submittedTo array
-                if (!invoice.submittedTo.includes(submittedTo)) {
-                    invoice.submittedTo.push(submittedTo);
-                    await invoice.save();
+                    // Add lender to submittedTo array
+                    if (!invoice.submittedTo.includes(submittedTo)) {
+                        invoice.submittedTo.push(submittedTo);
+                        await invoice.save();
+                    }
+                } else {
+                    // DIFFERENT FILE + SAME RECEIVABLE FIELDS -> ALLOW (Rule 2)
+                    // We will create a new invoice record for this specific document
+                    isExistingInvoice = false;
                 }
             } else {
-                // No existing invoice - will create new one below
+                // No existing invoice for this user - will create new one
+                // Still check if they already submitted this obligation via a different upload (race condition)
                 const duplicateSubmission = await LenderSubmission.findOne({
                     receivableFingerprint,
                     lenderId: submittedTo
                 });
 
                 if (duplicateSubmission) {
-                    const { updateTrustScore } = require('../services/trust.service');
-                    await updateTrustScore(req.user.id, 'DUPLICATE_ATTEMPT', {
-                        reason: 'same_lender_duplicate_upload',
-                        lenderId: submittedTo
-                    });
                     return next(new AppError(
                         'You have already submitted this receivable to this lender. Please choose a different lender or upload a different invoice.',
                         409,
@@ -213,7 +235,7 @@ const createInvoice = async (req, res, next) => {
         }
 
         // 8. Audit logs
-        const auditAction = isExistingInvoice 
+        const auditAction = isExistingInvoice
             ? (submittedTo ? 'invoice_submitted_to_additional_lender' : 'invoice_uploaded')
             : 'invoice_uploaded';
 
