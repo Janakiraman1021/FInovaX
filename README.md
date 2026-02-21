@@ -1,6 +1,8 @@
-# FInovaX — Blockchain-Powered Invoice Financing Platform
+# OpenFlow — Blockchain-Powered Invoice Financing Platform
 
-FInovaX (FinTrust) is a production-grade fintech platform that enables MSMEs to upload invoices, register them on the Ethereum Sepolia blockchain, store documents on IPFS, and obtain financing from verified lenders — all with a cryptographically-linked, tamper-proof audit trail.
+OpenFlow is a production-grade fintech platform that enables MSMEs to upload invoices, register them on the Ethereum Sepolia blockchain, store documents on IPFS, and obtain financing from verified lenders — all with a cryptographically-linked, tamper-proof audit trail.
+
+> **UI Principle**: *OneFlow surfaces trust signals without interfering with lending decisions.*
 
 ---
 
@@ -11,6 +13,17 @@ FInovaX (FinTrust) is a production-grade fintech platform that enables MSMEs to 
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Features](#features)
+  - [Invoice Lifecycle](#invoice-lifecycle)
+  - [Blockchain Integration](#blockchain-integration)
+  - [IPFS / Pinata Storage](#ipfs--pinata-storage)
+  - [Cross-Lender Privacy Model](#cross-lender-privacy-model)
+  - [Interoperability Adapter Layer](#interoperability-adapter-layer)
+  - [Audit Severity Levels](#audit-severity-levels)
+  - [Receivable Confidence Levels](#receivable-confidence-levels)
+  - [Soft Risk Alerts](#soft-risk-alerts)
+  - [Role-Based Access Control](#role-based-access-control-rbac)
+  - [Frontend Dashboards](#frontend-dashboards)
+- [Shared UI Components](#shared-ui-components)
 - [Smart Contract](#smart-contract)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
@@ -26,7 +39,7 @@ FInovaX (FinTrust) is a production-grade fintech platform that enables MSMEs to 
 
 ## Overview
 
-FInovaX solves the invoice financing gap for small and medium enterprises (MSMEs) by:
+OpenFlow solves the invoice financing gap for small and medium enterprises (MSMEs) by:
 
 1. Letting an **MSME** upload a PDF invoice — the backend hashes it (SHA-256), pins it to **IPFS** (Pinata), and registers the hash on a **Solidity smart contract** deployed on Ethereum Sepolia.
 2. Letting a **Lender** verify the on-chain status of an invoice and finance it — triggering a blockchain transaction that prevents double-financing.
@@ -102,7 +115,7 @@ The frontend is a Next.js 14 app with role-based dashboards for each participant
 ## Project Structure
 
 ```
-FInovaX/
+OpenFlow/
 ├── backend/                        # Express API server
 │   ├── server.js                   # Entry point (connects DB, starts server)
 │   ├── package.json
@@ -111,20 +124,27 @@ FInovaX/
 │   │   └── InvoiceRegistry.sol     # Solidity smart contract
 │   └── src/
 │       ├── app.js                  # Express app, middleware, routes
+│       ├── adapters/               # Interoperability adapter layer
+│       │   ├── banking.adapter.js  # Core Banking (Finacle / Temenos) adapter
+│       │   ├── erp.adapter.js      # ERP (SAP / Oracle / Tally) adapter
+│       │   └── gst.adapter.js      # GST / NIC e-invoice validation adapter
 │       ├── config/
 │       │   └── db.js               # Mongoose connection
-│       ├── controllers/            # Route handler logic
+│       ├── controllers/
 │       │   ├── auth.controller.js
 │       │   ├── invoice.controller.js
 │       │   ├── lender.controller.js
 │       │   ├── audit.controller.js
+│       │   ├── assurance.controller.js  # Assurance report management
 │       │   ├── blockchain.controller.js
 │       │   ├── health.controller.js
 │       │   ├── docs.controller.js
+│       │   ├── timeline.controller.js   # Invoice event timeline
 │       │   └── msmeProfileController.js
 │       ├── middleware/
 │       │   ├── auth.js             # JWT verification
 │       │   ├── rbac.js             # Role-based access control
+│       │   ├── auditLogger.js      # Auto-logs every state transition
 │       │   ├── validate.js         # express-validator error handler
 │       │   ├── rateLimiter.js
 │       │   ├── requestId.js        # Injects X-Request-ID header
@@ -133,21 +153,28 @@ FInovaX/
 │       │   ├── User.js             # Roles: msme | lender | auditor
 │       │   ├── Invoice.js          # Invoice lifecycle model
 │       │   ├── MSMEProfile.js      # Extended MSME profile
-│       │   └── AuditLog.js         # Immutable audit entries
+│       │   ├── AuditLog.js         # Immutable audit entries
+│       │   ├── AssuranceReport.js  # Assurance / due-diligence reports
+│       │   ├── LenderSubmission.js # Per-lender submission state tracking
+│       │   ├── Receivable.js       # Receivable fingerprint & deduplication
+│       │   └── RiskAlert.js        # Soft risk signal records
 │       ├── routes/
 │       │   ├── v1.routes.js        # Versioned /api/v1 router
 │       │   ├── auth.routes.js
 │       │   ├── invoice.routes.js
 │       │   ├── lender.routes.js
 │       │   ├── audit.routes.js
+│       │   ├── trust.routes.js     # Trust score & assurance endpoints
 │       │   ├── blockchain.routes.js
 │       │   ├── health.routes.js
 │       │   ├── docs.routes.js
 │       │   └── msmeProfileRoutes.js
 │       ├── services/
-│       │   ├── blockchain.service.js   # ethers.js — register/finance on-chain
-│       │   ├── ipfs.service.js         # Pinata IPFS upload
-│       │   ├── audit.service.js        # Audit log creation helpers
+│       │   ├── blockchain.service.js    # ethers.js — register/finance on-chain
+│       │   ├── ipfs.service.js          # Pinata IPFS upload
+│       │   ├── audit.service.js         # Audit log creation helpers
+│       │   ├── trust.service.js         # Trust score computation
+│       │   ├── intelligence.service.js  # Risk signal & confidence scoring
 │       │   └── eventListener.service.js # Blockchain event listener
 │       ├── validators/
 │       │   ├── auth.validator.js
@@ -166,30 +193,40 @@ FInovaX/
 │       ├── app/
 │       │   ├── page.tsx            # Public landing page
 │       │   ├── layout.tsx          # Root layout (AuthProvider)
+│       │   ├── about/              # Architecture & interoperability page
 │       │   ├── (auth)/
 │       │   │   ├── login/
 │       │   │   └── register/
-│       │   ├── (dashboard)/
-│       │   │   ├── msme/           # Invoice upload, history, pending, financed
-│       │   │   ├── lender/         # Verify & finance invoices
-│       │   │   └── auditor/        # Audit log viewer
-│       │   ├── about/
-│       │   ├── why-finovax/
-│       │   ├── privacy-policy/
-│       │   └── terms-and-conditions/
+│       │   └── (dashboard)/
+│       │       ├── msme/           # Upload, history, pending, financed, fraud-alert
+│       │       ├── lender/         # Verify, finance, trust signals, privacy
+│       │       └── auditor/        # Audit trail, severity filter, system health
 │       ├── components/
-│       │   ├── finovax/            # Domain-specific UI components
+│       │   ├── oneflow/            # Domain-specific components
+│       │   │   ├── HashVerifier.tsx         # On-chain invoice verification
+│       │   │   ├── InvoiceUploader.tsx
+│       │   │   ├── BlockchainVisualizer.tsx
+│       │   │   └── ...
 │       │   └── shared/             # Reusable UI components
+│       │       ├── StatusBadge.tsx          # Invoice status pill
+│       │       ├── AuditSeverityBadge.tsx   # INFO / WARNING / CRITICAL badge
+│       │       ├── ConfidenceBadge.tsx      # HIGH / MEDIUM / LOW confidence
+│       │       ├── RiskFlagBadge.tsx        # Soft risk alert label
+│       │       ├── InteroperabilityBadge.tsx # Trust layer verification label
+│       │       ├── TrustScoreCard.tsx
+│       │       ├── InvoiceTimeline.tsx
+│       │       ├── AssuranceReportViewer.tsx
+│       │       └── ...
 │       ├── context/
 │       │   └── AuthContext.tsx     # JWT session, role, demo-mode state
 │       ├── hooks/
 │       │   └── useWallet.ts        # MetaMask / ethers wallet hook
 │       └── lib/
-│           ├── api.ts              # Axios API client (authAPI, invoiceAPI…)
+│           ├── api.ts              # API client (authAPI, invoiceAPI, lenderAPI…)
 │           ├── utils.ts
 │           └── mock/               # Demo-mode mock data
 │
-└── v0/                             # Prototype / design reference (v0.dev)
+
 ```
 
 ---
@@ -198,36 +235,101 @@ FInovaX/
 
 ### Invoice Lifecycle
 - **Upload** — MSME uploads a PDF (≤ 10 MB). Backend computes a SHA-256 hash, uploads to IPFS via Pinata, and registers the hash on-chain via `InvoiceRegistry.registerInvoice()`.
-- **Verify** — Lender queries both MongoDB and the blockchain to confirm an invoice is registered and not yet financed.
-- **Finance** — Lender calls `InvoiceRegistry.financeInvoice()`. The contract guards against double-financing; MongoDB status is updated to `FINANCED`.
-- **Audit** — Every state transition writes an entry to `AuditLog`. Auditors can filter by action, user, or invoice.
+- **Submit to Lender** — MSME selects a lender; the backend creates a `LenderSubmission` record and transitions invoice status to `SUBMITTED`.
+- **Verify** — Lender queries MongoDB and the blockchain to confirm an invoice is registered and not yet financed.
+- **Finance** — Lender calls `InvoiceRegistry.financeInvoice()`. The contract guards against double-financing; status updates to `FINANCED`.
+- **Audit** — Every state transition writes an immutable entry to `AuditLog` via `auditLogger` middleware. Auditors can filter by severity, action, user, or invoice.
 
 ### Blockchain Integration
 - Hash-only approach — no sensitive data on-chain, only `bytes32` hashes and flags.
-- `InvoiceRegistry` also supports a **Receivable Fingerprint** pattern for receivables deduplication.
+- `InvoiceRegistry` supports a **Receivable Fingerprint** pattern for cross-lender deduplication.
 - Duplicate financing attempts emit a `DuplicateFinancingAttempt` event rather than reverting silently.
-- Lender addresses must be explicitly authorised by the contract owner.
+- Lender wallet addresses must be explicitly authorised by the contract owner via `authorizeLender()`.
 
 ### IPFS / Pinata Storage
-- Invoice PDFs are pinned to IPFS on upload.
-- CID is stored in MongoDB (`ipfsCID` field) so files are always retrievable via the Pinata gateway.
-- IPFS upload is optional — if credentials are absent, the invoice is still hashed and stored in MongoDB.
+- Invoice PDFs are pinned to IPFS on upload; CID stored in MongoDB (`ipfsCID`).
+- Files are always retrievable via the Pinata gateway using the stored CID.
+- IPFS upload is optional — if credentials are absent the invoice is still hashed and stored in MongoDB.
+
+### Cross-Lender Privacy Model
+The frontend enforces strict privacy rules on financed invoices:
+- **Lender Dashboard / Details** — Finance button is hidden; lender identity, amount, and timestamp are masked. A lock notice reads: *"This receivable has already been financed — cross-lender privacy rules apply."*
+- **MSME Dashboard** — Financed invoices display *"Financed by a lender"* — no lender name is ever exposed.
+- **Auditor Dashboard** — Full event type, severity, and timestamp visible (permissible for regulators). No lender-to-lender data leakage.
+
+### Interoperability Adapter Layer
+Backend adapters connect OneFlow to existing enterprise infrastructure as read-only integration points:
+
+| Adapter | Description |
+|---|---|
+| `erp.adapter.js` | SAP / Oracle / Tally-compatible invoice ingestion |
+| `banking.adapter.js` | CBS APIs (Finacle, Temenos, BankingCloud) for disbursement & reconciliation |
+| `gst.adapter.js` | GSTIN / NIC e-invoice portal validation before on-chain anchoring |
+
+Frontend surfaces this via a read-only **"Verified via OneFlow Trust Layer (ERP & Core Banking compatible)"** badge on the Lender Dashboard, HashVerifier result, Auditor Dashboard header, and About / Architecture page.
+
+### Audit Severity Levels
+Every audit log entry is colour-coded by severity in the Auditor Dashboard:
+
+| Severity | Colour | Trigger Examples |
+|---|---|---|
+| `INFO` | Blue / Grey | Login, invoice registered, profile updated |
+| `WARNING` | Orange | Suspicious submission, verification alert |
+| `CRITICAL` | Red | Duplicate financing attempt, invoice blocked |
+
+A severity filter dropdown (`ALL / CRITICAL / WARNING / INFO`) lets auditors slice the live timeline.
+
+### Receivable Confidence Levels
+A non-blocking **Confidence Badge** is shown to lenders on verification results and invoice detail pages:
+
+| Confidence | Colour | Meaning |
+|---|---|---|
+| `HIGH` | Green | Consistent receivable data across submissions |
+| `MEDIUM` | Yellow | Manually entered data, not yet corroborated |
+| `LOW` | Red | Inconsistent or risky data patterns detected |
+
+No numeric scores or internal signals are exposed. The badge never blocks any lending action.
+
+### Soft Risk Alerts
+A non-blocking **⚠ Risk Flag Badge** (orange) appears when the backend returns a `riskFlag` value:
+- **Lender view** — Label only (e.g. *"⚠ Needs Review"*). Hover tooltip: *"The system has detected behavioral patterns that may require manual review."* No reason codes, no cross-lender leakage.
+- **Auditor view** — Risk events appear as timeline items with severity badge and timestamp.
+- **MSME view** — `SUBMITTED` invoices show a neutral *"Verification in progress with lenders"* label. No risk signals are exposed.
 
 ### Role-Based Access Control (RBAC)
 | Resource | MSME | Lender | Auditor |
 |---|:---:|:---:|:---:|
 | Upload invoice | ✅ | — | — |
+| Submit to lender | ✅ | — | — |
 | View own invoices | ✅ | — | — |
 | View all invoices | — | ✅ | ✅ |
 | Verify invoice | — | ✅ | — |
 | Finance invoice | — | ✅ | — |
 | View audit logs | — | — | ✅ |
+| View risk signals | — | ✅ (limited) | ✅ (full) |
+| View trust score | ✅ | ✅ | — |
 
 ### Frontend Dashboards
-- **MSME**: Upload invoices, track history, view pending/financed/rejected tabs, manage profile.
-- **Lender**: Search and verify invoices on-chain, initiate financing.
-- **Auditor**: Paginated audit log with filters.
+- **MSME**: Upload invoices, submit to lenders, track history across pending / financed / rejected / fraud-alert tabs, manage extended profile. Financed invoices respect cross-lender privacy.
+- **Lender**: Hash Verifier with on-chain lookup, `ConfidenceBadge` + `RiskFlagBadge` on results, finance eligible invoices, loan history, active loans, disbursement panel, fraud reporting, and verify-hash page.
+- **Auditor**: Live audit trail with `AuditSeverityBadge` colour-coding + severity filter dropdown, system health panel (Oracle Consensus, zkProof, IPFS, Smart Contract), read-only invoice list.
 - **Demo Mode**: Full interactive walkthrough without a backend connection (mock data).
+
+---
+
+## Shared UI Components
+
+| Component | Purpose |
+|---|---|
+| `StatusBadge` | Invoice status pill (`UPLOADED / SUBMITTED / VERIFIED / FINANCED / BLOCKED / FRAUD_ALERT`) |
+| `AuditSeverityBadge` | Colour-coded severity label for audit events (`INFO / WARNING / CRITICAL`) |
+| `ConfidenceBadge` | Receivable confidence level with hover tooltip (`HIGH / MEDIUM / LOW`) |
+| `RiskFlagBadge` | Non-blocking soft risk alert label; hidden when `riskFlag` is `CLEAR` / `NONE` |
+| `InteroperabilityBadge` | Static "Verified via OneFlow Trust Layer" label for judges / reviewers |
+| `TrustScoreCard` | MSME trust score visualisation with optional detailed breakdown |
+| `InvoiceTimeline` | Per-invoice event timeline pulled from audit logs |
+| `AssuranceReportViewer` | Displays assurance / due-diligence reports; supports acknowledgement |
+| `HashVerifier` | Full ledger oracle — accepts Invoice ID, SHA-256 hash, or IPFS CID |
 
 ---
 
