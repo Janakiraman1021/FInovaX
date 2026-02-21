@@ -33,6 +33,12 @@ const auditLogSchema = new mongoose.Schema(
             ],
             index: true,
         },
+        severity: {
+            type: String,
+            enum: ['INFO', 'WARNING', 'CRITICAL'],
+            default: 'INFO',
+            index: true,
+        },
         performedBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',

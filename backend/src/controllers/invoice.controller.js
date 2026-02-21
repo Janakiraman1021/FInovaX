@@ -239,22 +239,41 @@ const createInvoice = async (req, res, next) => {
             ? (submittedTo ? 'invoice_submitted_to_additional_lender' : 'invoice_uploaded')
             : 'invoice_uploaded';
 
+        // OneFlow Interoperability: ERP Adapter (Upgrade 3)
+        const { validateInvoiceInERP } = require('../adapters/erp.adapter');
+        const erpResult = await validateInvoiceInERP(receivableFingerprint, req.user.id);
+
+        // ✅ 7. Create audit logs
         await createAuditLog({
-            action: auditAction,
+            action: isExistingInvoice ? 'invoice_submitted_to_additional_lender' : 'invoice_uploaded',
             performedBy: req.user.id,
             invoiceId: invoice._id,
-            receivableFingerprint: invoice.receivableFingerprint,
+            receivableFingerprint,
+            severity: 'INFO',
             details: {
                 invoiceId: invoice.invoiceId,
-                invoiceHash: invoice.invoiceHash,
-                receivableFingerprint: invoice.receivableFingerprint,
-                ipfsCID: invoice.ipfsCID,
-                lenderSelected: submittedTo ? true : false,
-                isExistingInvoice
+                amount: invoice.amount,
+                submittedTo: submittedTo || null,
+                erpValidation: erpResult.status
             },
             ipAddress: req.ip,
             requestId: req.requestId,
         });
+
+        if (submittedTo && !isExistingInvoice) {
+            await createAuditLog({
+                action: 'invoice_submitted',
+                performedBy: req.user.id,
+                invoiceId: invoice._id,
+                receivableFingerprint,
+                severity: 'INFO',
+                details: {
+                    lenderId: submittedTo,
+                },
+                ipAddress: req.ip,
+                requestId: req.requestId,
+            });
+        }
 
         // 9. Log receivable registration (internal audit) - only for new invoices
         if (!isExistingInvoice) {
@@ -263,6 +282,7 @@ const createInvoice = async (req, res, next) => {
                 performedBy: req.user.id,
                 invoiceId: invoice._id,
                 receivableFingerprint: invoice.receivableFingerprint,
+                severity: 'INFO',
                 details: { receivableFingerprint },
                 ipAddress: req.ip,
                 requestId: req.requestId,

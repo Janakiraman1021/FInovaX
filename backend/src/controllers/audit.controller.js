@@ -47,17 +47,19 @@ const getAllInvoices = async (req, res, next) => {
  */
 const getAuditLogs = async (req, res, next) => {
     try {
-        const { page = 1, limit = 50, eventType, userId } = req.query;
+        const { page = 1, limit = 50, eventType, userId, severity } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const filter = {};
         if (eventType) filter.eventType = eventType;
         if (userId) filter.performedBy = userId;
+        if (severity) filter.severity = severity.toUpperCase();
 
         const [logs, total] = await Promise.all([
             AuditLog.find(filter)
                 .populate('performedBy', 'name email role')
                 .populate('invoiceId', 'invoiceId amount status')
+                .select('eventType performedBy actorAddress receivableFingerprint invoiceId txHash details ipAddress requestId severity createdAt')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(parseInt(limit)),

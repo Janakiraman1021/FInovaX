@@ -11,8 +11,29 @@ const AuditLog = require('../models/AuditLog');
  * @param {string} [params.ipAddress] - Client IP address.
  * @returns {Promise<object>}
  */
-const createAuditLog = async ({ action, performedBy, invoiceId = null, receivableFingerprint = null, txHash = null, details = {}, ipAddress = null, requestId = null }) => {
+const createAuditLog = async ({
+    action,
+    performedBy,
+    invoiceId = null,
+    receivableFingerprint = null,
+    txHash = null,
+    details = {},
+    ipAddress = null,
+    requestId = null,
+    severity = null
+}) => {
     try {
+        // Automatic Severity Mapping if not provided
+        let eventSeverity = severity;
+        if (!eventSeverity) {
+            const warningEvents = ['DUPLICATE_ATTEMPT', 'DUPLICATE_FINANCING_ATTEMPT', 'finance_blocked_duplicate', 'RECEIVABLE_BLOCKED'];
+            const criticalEvents = ['INVOICE_BLOCKED', 'BLOCKCHAIN_TX_FAILED', 'DATABASE_SYNC_ERROR'];
+
+            if (criticalEvents.includes(action)) eventSeverity = 'CRITICAL';
+            else if (warningEvents.includes(action) || action.includes('blocked')) eventSeverity = 'WARNING';
+            else eventSeverity = 'INFO';
+        }
+
         const log = await AuditLog.create({
             eventType: action,
             performedBy,
@@ -22,6 +43,7 @@ const createAuditLog = async ({ action, performedBy, invoiceId = null, receivabl
             details,
             ipAddress,
             requestId,
+            severity: eventSeverity
         });
         return log;
     } catch (error) {
