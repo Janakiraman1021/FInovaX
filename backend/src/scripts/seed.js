@@ -25,10 +25,10 @@ const runSeed = async () => {
     console.log('🌱 Starting database seed...');
 
     try {
-        // 1. Clear database Collections
-        await User.deleteMany();
-        await Invoice.deleteMany();
-        await AuditLog.deleteMany();
+        // 1. Clear database Collections (Drop completely to kill old indexes)
+        try { await User.collection.drop(); } catch (e) { }
+        try { await Invoice.collection.drop(); } catch (e) { }
+        try { await AuditLog.collection.drop(); } catch (e) { }
         console.log('🗑️  Cleared existing Users, Invoices, and Audit Logs');
 
         // 2. Create base roles to test
