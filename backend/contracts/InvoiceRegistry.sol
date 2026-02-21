@@ -3,47 +3,61 @@ pragma solidity ^0.8.20;
 
 /**
  * @title InvoiceRegistry
- * @notice On-chain registry for invoice hash verification and financing audit trail.
- * @dev Deployed on Sepolia testnet for FinTrust platform.
+ * @notice On-chain trust and audit layer for invoice financing on FinTrust.
+ * @dev Deployed on Sepolia testnet. No invoice data is stored on-chain —
+ *      only hashes and flags for verification. All detail lives off-chain.
  */
 contract InvoiceRegistry {
-    struct InvoiceRecord {
-        string invoiceNumber;
-        address registeredBy;
-        bool financed;
-        address financedBy;
-        uint256 registeredAt;
-        uint256 financedAt;
-    }
+    // ─── State ────────────────────────────────────────────────────────
 
-    /// @notice Owner of the contract (deployer)
+    /// @notice Contract owner (deployer)
     address public owner;
 
-    /// @notice Mapping from SHA-256 file hash (bytes32) to invoice record
-    mapping(bytes32 => InvoiceRecord) public invoices;
+    /// @notice Whether an invoiceHash has been registered
+    mapping(bytes32 => bool) public registered;
 
-    /// @notice Track registered hashes
-    mapping(bytes32 => bool) public hashExists;
+    /// @notice Whether a registered invoiceHash has been financed
+    mapping(bytes32 => bool) public financed;
 
-    // ─── Events ───────────────────────────────────────────────────────
+    /// @notice The lender address that financed a given invoiceHash
+    mapping(bytes32 => address) public financedBy;
+
+    /// @notice Addresses authorised to call financeInvoice
+    mapping(address => bool) public authorizedLenders;
+
+    // ─── Events (immutable audit trail) ───────────────────────────────
 
     event InvoiceRegistered(
-        bytes32 indexed hash,
-        string invoiceNumber,
+        bytes32 indexed invoiceHash,
+        string invoiceId,
         address indexed registeredBy,
         uint256 timestamp
     );
 
     event InvoiceFinanced(
-        bytes32 indexed hash,
-        address indexed financedBy,
+        bytes32 indexed invoiceHash,
+        address indexed lender,
         uint256 timestamp
     );
+
+    event DuplicateFinancingAttempt(
+        bytes32 indexed invoiceHash,
+        address indexed attemptedBy,
+        uint256 timestamp
+    );
+
+    event LenderAuthorized(address indexed lender);
+    event LenderRevoked(address indexed lender);
 
     // ─── Modifiers ────────────────────────────────────────────────────
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner can call this function");
+        require(msg.sender == owner, "Caller is not the owner");
+        _;
+    }
+
+    modifier onlyAuthorizedLender() {
+        require(authorizedLenders[msg.sender], "Caller is not an authorized lender");
         _;
     }
 
@@ -53,85 +67,84 @@ contract InvoiceRegistry {
         owner = msg.sender;
     }
 
-    // ─── Functions ────────────────────────────────────────────────────
+    // ─── Admin Functions ──────────────────────────────────────────────
 
     /**
-     * @notice Register a new invoice hash on-chain.
-     * @param hash SHA-256 hash of the invoice file (as bytes32).
-     * @param invoiceNumber Human-readable invoice identifier.
+     * @notice Authorize an address to finance invoices.
+     * @param lender The lender wallet address.
      */
-    function registerInvoice(bytes32 hash, string calldata invoiceNumber) external {
-        require(!hashExists[hash], "Invoice hash already registered");
-        require(bytes(invoiceNumber).length > 0, "Invoice number cannot be empty");
-
-        invoices[hash] = InvoiceRecord({
-            invoiceNumber: invoiceNumber,
-            registeredBy: msg.sender,
-            financed: false,
-            financedBy: address(0),
-            registeredAt: block.timestamp,
-            financedAt: 0
-        });
-
-        hashExists[hash] = true;
-
-        emit InvoiceRegistered(hash, invoiceNumber, msg.sender, block.timestamp);
+    function authorizeLender(address lender) external onlyOwner {
+        require(lender != address(0), "Invalid lender address");
+        authorizedLenders[lender] = true;
+        emit LenderAuthorized(lender);
     }
 
     /**
-     * @notice Mark an invoice as financed. Prevents duplicate financing.
-     * @param hash SHA-256 hash of the invoice file (as bytes32).
+     * @notice Revoke a lender's authorization.
+     * @param lender The lender wallet address.
      */
-    function markFinanced(bytes32 hash) external {
-        require(hashExists[hash], "Invoice hash not registered");
-        require(!invoices[hash].financed, "Invoice already financed");
-
-        invoices[hash].financed = true;
-        invoices[hash].financedBy = msg.sender;
-        invoices[hash].financedAt = block.timestamp;
-
-        emit InvoiceFinanced(hash, msg.sender, block.timestamp);
+    function revokeLender(address lender) external onlyOwner {
+        authorizedLenders[lender] = false;
+        emit LenderRevoked(lender);
     }
+
+    // ─── Core Functions ───────────────────────────────────────────────
+
+    /**
+     * @notice Register an invoice hash on-chain. Reverts on duplicate.
+     * @param invoiceHash SHA-256 hash of the invoice file (bytes32).
+     * @param invoiceId   Human-readable invoice identifier (emitted in event only, NOT stored).
+     */
+    function registerInvoice(bytes32 invoiceHash, string calldata invoiceId) external {
+        require(!registered[invoiceHash], "Invoice hash already registered");
+        require(bytes(invoiceId).length > 0, "Invoice ID cannot be empty");
+
+        registered[invoiceHash] = true;
+
+        emit InvoiceRegistered(invoiceHash, invoiceId, msg.sender, block.timestamp);
+    }
+
+    /**
+     * @notice Mark an invoice as financed. Only callable by authorized lenders.
+     *         Emits DuplicateFinancingAttempt (instead of reverting) if already financed.
+     * @param invoiceHash SHA-256 hash of the invoice file (bytes32).
+     */
+    function financeInvoice(bytes32 invoiceHash) external onlyAuthorizedLender {
+        require(registered[invoiceHash], "Invoice hash not registered");
+
+        // Duplicate financing guard — emit event and return instead of reverting
+        if (financed[invoiceHash]) {
+            emit DuplicateFinancingAttempt(invoiceHash, msg.sender, block.timestamp);
+            return;
+        }
+
+        financed[invoiceHash] = true;
+        financedBy[invoiceHash] = msg.sender;
+
+        emit InvoiceFinanced(invoiceHash, msg.sender, block.timestamp);
+    }
+
+    // ─── View Functions ───────────────────────────────────────────────
 
     /**
      * @notice Check if an invoice hash is registered.
-     * @param hash SHA-256 hash to check.
-     * @return bool True if the hash is registered.
      */
-    function isRegistered(bytes32 hash) external view returns (bool) {
-        return hashExists[hash];
+    function isRegistered(bytes32 invoiceHash) external view returns (bool) {
+        return registered[invoiceHash];
     }
 
     /**
      * @notice Check if a registered invoice has been financed.
-     * @param hash SHA-256 hash to check.
-     * @return bool True if the invoice is financed.
      */
-    function isFinanced(bytes32 hash) external view returns (bool) {
-        require(hashExists[hash], "Invoice hash not registered");
-        return invoices[hash].financed;
+    function isFinanced(bytes32 invoiceHash) external view returns (bool) {
+        return financed[invoiceHash];
     }
 
     /**
-     * @notice Get full invoice record by hash.
-     * @param hash SHA-256 hash of the invoice.
-     * @return invoiceNumber The human-readable invoice identifier.
-     * @return registeredBy Address that registered the invoice.
-     * @return financed Whether the invoice has been financed.
-     * @return timestamp Registration timestamp.
+     * @notice Get the lender address that financed an invoice.
+     * @return lender Address of the financing lender (address(0) if not financed).
      */
-    function getInvoice(bytes32 hash)
-        external
-        view
-        returns (
-            string memory invoiceNumber,
-            address registeredBy,
-            bool financed,
-            uint256 timestamp
-        )
-    {
-        require(hashExists[hash], "Invoice hash not registered");
-        InvoiceRecord memory record = invoices[hash];
-        return (record.invoiceNumber, record.registeredBy, record.financed, record.registeredAt);
+    function getFinancier(bytes32 invoiceHash) external view returns (address lender) {
+        return financedBy[invoiceHash];
     }
 }

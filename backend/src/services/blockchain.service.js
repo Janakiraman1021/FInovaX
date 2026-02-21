@@ -1,14 +1,17 @@
 const { ethers } = require('ethers');
 
-// ABI for InvoiceRegistry contract (only the functions we need)
+// ABI for InvoiceRegistry contract (matches updated contract)
 const CONTRACT_ABI = [
-    'function registerInvoice(bytes32 hash, string invoiceNumber) external',
-    'function markFinanced(bytes32 hash) external',
-    'function isRegistered(bytes32 hash) external view returns (bool)',
-    'function isFinanced(bytes32 hash) external view returns (bool)',
-    'function getInvoice(bytes32 hash) external view returns (string invoiceNumber, address registeredBy, bool financed, uint256 timestamp)',
-    'event InvoiceRegistered(bytes32 indexed hash, string invoiceNumber, address indexed registeredBy, uint256 timestamp)',
-    'event InvoiceFinanced(bytes32 indexed hash, address indexed financedBy, uint256 timestamp)',
+    'function registerInvoice(bytes32 invoiceHash, string invoiceId) external',
+    'function financeInvoice(bytes32 invoiceHash) external',
+    'function isRegistered(bytes32 invoiceHash) external view returns (bool)',
+    'function isFinanced(bytes32 invoiceHash) external view returns (bool)',
+    'function getFinancier(bytes32 invoiceHash) external view returns (address)',
+    'function authorizeLender(address lender) external',
+    'function revokeLender(address lender) external',
+    'event InvoiceRegistered(bytes32 indexed invoiceHash, string invoiceId, address indexed registeredBy, uint256 timestamp)',
+    'event InvoiceFinanced(bytes32 indexed invoiceHash, address indexed lender, uint256 timestamp)',
+    'event DuplicateFinancingAttempt(bytes32 indexed invoiceHash, address indexed attemptedBy, uint256 timestamp)',
 ];
 
 let provider = null;
@@ -50,17 +53,17 @@ const toBytes32 = (hexHash) => {
 /**
  * Register an invoice hash on the blockchain.
  * @param {string} fileHash - SHA-256 hex hash of the invoice file.
- * @param {string} invoiceNumber - Invoice identifier.
+ * @param {string} invoiceId - Invoice identifier (emitted in event only, not stored on-chain).
  * @returns {Promise<{ txHash: string } | null>}
  */
-const registerInvoiceOnChain = async (fileHash, invoiceNumber) => {
+const registerInvoiceOnChain = async (fileHash, invoiceId) => {
     if (!contract && !initBlockchain()) {
         return null;
     }
 
     try {
         const hashBytes = toBytes32(fileHash);
-        const tx = await contract.registerInvoice(hashBytes, invoiceNumber);
+        const tx = await contract.registerInvoice(hashBytes, invoiceId);
         const receipt = await tx.wait();
 
         console.log(`✅ Invoice registered on-chain: ${receipt.hash}`);
@@ -73,6 +76,7 @@ const registerInvoiceOnChain = async (fileHash, invoiceNumber) => {
 
 /**
  * Mark an invoice as financed on the blockchain.
+ * Contract emits DuplicateFinancingAttempt if already financed (does not revert).
  * @param {string} fileHash - SHA-256 hex hash of the invoice file.
  * @returns {Promise<{ txHash: string } | null>}
  */
@@ -83,13 +87,13 @@ const markInvoiceFinancedOnChain = async (fileHash) => {
 
     try {
         const hashBytes = toBytes32(fileHash);
-        const tx = await contract.markFinanced(hashBytes);
+        const tx = await contract.financeInvoice(hashBytes);
         const receipt = await tx.wait();
 
         console.log(`✅ Invoice marked financed on-chain: ${receipt.hash}`);
         return { txHash: receipt.hash };
     } catch (error) {
-        console.error('Blockchain markFinanced error:', error.message);
+        console.error('Blockchain financeInvoice error:', error.message);
         throw new Error(`Blockchain finance marking failed: ${error.reason || error.message}`);
     }
 };
@@ -97,7 +101,7 @@ const markInvoiceFinancedOnChain = async (fileHash) => {
 /**
  * Verify if an invoice hash is registered and/or financed on-chain.
  * @param {string} fileHash - SHA-256 hex hash.
- * @returns {Promise<{ registered: boolean, financed: boolean, details: object | null } | null>}
+ * @returns {Promise<{ registered: boolean, financed: boolean, financier: string | null } | null>}
  */
 const verifyInvoiceOnChain = async (fileHash) => {
     if (!contract && !initBlockchain()) {
@@ -106,24 +110,19 @@ const verifyInvoiceOnChain = async (fileHash) => {
 
     try {
         const hashBytes = toBytes32(fileHash);
-        const registered = await contract.isRegistered(hashBytes);
+        const isRegistered = await contract.isRegistered(hashBytes);
 
-        if (!registered) {
-            return { registered: false, financed: false, details: null };
+        if (!isRegistered) {
+            return { registered: false, financed: false, financier: null };
         }
 
-        const financed = await contract.isFinanced(hashBytes);
-        const details = await contract.getInvoice(hashBytes);
+        const isFinanced = await contract.isFinanced(hashBytes);
+        const financier = await contract.getFinancier(hashBytes);
 
         return {
             registered: true,
-            financed,
-            details: {
-                invoiceNumber: details.invoiceNumber,
-                registeredBy: details.registeredBy,
-                financed: details.financed,
-                timestamp: Number(details.timestamp),
-            },
+            financed: isFinanced,
+            financier: financier === ethers.ZeroAddress ? null : financier,
         };
     } catch (error) {
         console.error('Blockchain verify error:', error.message);
