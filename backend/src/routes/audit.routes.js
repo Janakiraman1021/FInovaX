@@ -1,6 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { getAllInvoices, getAuditLogs, getInvoiceAuditLogs, getReceivableAuditLogs } = require('../controllers/audit.controller');
+const {
+    getAllInvoices,
+    getAuditLogs,
+    getInvoiceAuditLogs,
+    getReceivableAuditLogs,
+    getReceivableRiskAlerts,
+    getMSMERiskAlerts
+} = require('../controllers/audit.controller');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
 
@@ -18,5 +25,9 @@ router.get('/invoice/:invoiceId', getInvoiceAuditLogs);
 
 // GET /audit/receivable/:fingerprint — logs for a specific business obligation
 router.get('/receivable/:fingerprint', getReceivableAuditLogs);
+
+// Risk Alerts (Upgrade 2)
+router.get('/alerts/receivable/:fingerprint', getReceivableRiskAlerts);
+router.get('/alerts/msme/:id', getMSMERiskAlerts);
 
 module.exports = router;

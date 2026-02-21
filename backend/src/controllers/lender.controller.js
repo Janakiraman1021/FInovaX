@@ -192,6 +192,20 @@ const verifyInvoice = async (req, res, next) => {
             requestId: req.requestId,
         });
 
+        // 🧠 OneFlow Intelligence Integration (Upgrade 1 & 2)
+        const Receivable = require('../models/Receivable');
+        const RiskAlert = require('../models/RiskAlert');
+
+        const [receivableData, hasRiskAlerts] = await Promise.all([
+            Receivable.findOne({ receivableFingerprint: invoice.receivableFingerprint }),
+            RiskAlert.exists({
+                $or: [
+                    { entityType: 'RECEIVABLE', entityId: invoice.receivableFingerprint, severity: 'WARNING' },
+                    { entityType: 'MSME', entityId: invoice.uploadedBy._id.toString(), severity: 'WARNING' }
+                ]
+            })
+        ]);
+
         return sendResponse(res, 200, {
             invoice: maskedInvoice,
             verification: {
@@ -200,7 +214,9 @@ const verifyInvoice = async (req, res, next) => {
                 financed: invoice.status === 'FINANCED',
                 registeredOnChain: registeredOnChain,
                 erpValidation: erpStatus.status,
-                gstReference: gstStatus.status
+                gstReference: gstStatus.status,
+                receivableConfidence: receivableData?.receivableConfidence || 'MEDIUM',
+                riskFlag: hasRiskAlerts ? 'NEEDS_REVIEW' : 'NORMAL'
             },
             canFinance,
         }, 'Verification result retrieved successfully');

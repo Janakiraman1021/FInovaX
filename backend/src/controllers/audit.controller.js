@@ -122,4 +122,43 @@ const getReceivableAuditLogs = async (req, res, next) => {
     }
 };
 
-module.exports = { getAllInvoices, getAuditLogs, getInvoiceAuditLogs, getReceivableAuditLogs };
+const getReceivableRiskAlerts = async (req, res, next) => {
+    try {
+        const { fingerprint } = req.params;
+        const RiskAlert = require('../models/RiskAlert');
+
+        const alerts = await RiskAlert.find({
+            entityType: 'RECEIVABLE',
+            entityId: fingerprint
+        }).sort({ createdAt: -1 });
+
+        return sendResponse(res, 200, { alerts });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getMSMERiskAlerts = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const RiskAlert = require('../models/RiskAlert');
+
+        const alerts = await RiskAlert.find({
+            entityType: 'MSME',
+            entityId: id
+        }).sort({ createdAt: -1 });
+
+        return sendResponse(res, 200, { alerts });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = {
+    getAllInvoices,
+    getAuditLogs,
+    getInvoiceAuditLogs,
+    getReceivableAuditLogs,
+    getReceivableRiskAlerts,
+    getMSMERiskAlerts
+};

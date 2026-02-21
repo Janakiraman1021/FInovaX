@@ -9,6 +9,7 @@ const { uploadToIPFS } = require('../services/ipfs.service');
 const { registerInvoiceOnChain, registerReceivableOnChain } = require('../services/blockchain.service');
 const { createAuditLog } = require('../services/audit.service');
 const { sendResponse } = require('../utils/response');
+const { updateReceivableConfidence, checkRiskAlerts, triggerRiskAlert } = require('../services/intelligence.service');
 
 // Multer config — store in memory for hashing / IPFS upload
 const upload = multer({
@@ -26,6 +27,8 @@ const upload = multer({
 /**
  * POST /api/invoices/upload
  * Upload an invoice PDF (MSME only).
+ *
+ * 🧠 OneFlow does not decide risk. It surfaces confidence and signals so lenders can decide.
  */
 const createInvoice = async (req, res, next) => {
     try {
@@ -86,6 +89,17 @@ const createInvoice = async (req, res, next) => {
         const globalExistingFile = await Invoice.findOne({ invoiceHash });
         if (globalExistingFile) {
             if (globalExistingFile.receivableFingerprint !== receivableFingerprint) {
+                // 🛡️ INTELLIGENCE: Trigger soft alert for inconsistency (Upgrade 2)
+                const { triggerRiskAlert } = require('../services/intelligence.service');
+                const Receivable = require('../models/Receivable');
+
+                await triggerRiskAlert('INCONSISTENT_BEHAVIOR', 'WARNING', 'MSME', req.user.id);
+                await Receivable.findOneAndUpdate(
+                    { receivableFingerprint },
+                    { $set: { inconsistentDataDetected: true } },
+                    { upsert: true }
+                );
+
                 return next(new AppError(
                     "Invoice file does not match declared receivable details",
                     400,
@@ -98,6 +112,9 @@ const createInvoice = async (req, res, next) => {
         if (!submittedTo) {
             // Initial Upload (Action 1): Check if THIS USER uploaded this file before
             if (globalExistingFile && globalExistingFile.uploadedBy.toString() === req.user.id) {
+                // 🛡️ INTELLIGENCE: Trigger soft alert for repeated uploads (Upgrade 2)
+                await triggerRiskAlert('NEAR_DUPLICATE_PATTERN', 'WARNING', 'MSME', req.user.id);
+
                 return next(new AppError(
                     'You have already uploaded this file. To submit it to a lender, use the "Submit to Lender" option from your invoice list.',
                     409,
@@ -289,6 +306,10 @@ const createInvoice = async (req, res, next) => {
             });
         }
 
+        // 🧠 OneFlow Intelligence Integration
+        await updateReceivableConfidence(receivableFingerprint);
+        await checkRiskAlerts(receivableFingerprint, req.user.id);
+
         const responseMessage = isExistingInvoice
             ? `Invoice submitted to additional lender successfully.`
             : 'Invoice uploaded securely. Pending blockchain verification by lender.';
@@ -463,12 +484,18 @@ const submitInvoice = async (req, res, next) => {
             requestId: req.requestId,
         });
 
+        // 🧠 OneFlow Intelligence Integration
+        await updateReceivableConfidence(invoice.receivableFingerprint);
+        await checkRiskAlerts(invoice.receivableFingerprint, req.user.id);
+
         return sendResponse(res, 200, {
-            invoiceId: invoice.invoiceId,
-            receivableFingerprint: invoice.receivableFingerprint,
-            lenderOrganization: lender.organization,
-            submittedAt: new Date()
-        }, `Invoice successfully submitted to ${lender.organization}`);
+            invoice: {
+                id: invoice._id,
+                invoiceId: invoice.invoiceId,
+                status: invoice.status,
+                submittedTo: lenderId
+            }
+        }, 'Invoice submitted to lender successfully.');
     } catch (error) {
         next(error);
     }
