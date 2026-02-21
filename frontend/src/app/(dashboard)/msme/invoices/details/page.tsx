@@ -93,6 +93,29 @@ export default function MSMEInvoiceDetailsPage() {
                 </div>
             </motion.div>
 
+            {/* Privacy Notice for Financed Receivables */}
+            {invoice.status === "FINANCED" && (
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="p-4 rounded-xl border flex items-start gap-3"
+                    style={{
+                        background: "rgba(5,150,105,0.06)",
+                        borderColor: "rgba(5,150,105,0.25)",
+                    }}
+                >
+                    <div className="w-5 h-5 rounded-full bg-status-success/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <div className="w-2 h-2 rounded-full bg-status-success" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-mg-silver">Financed by a lender</p>
+                        <p className="text-xs text-mg-muted mt-1">
+                            Your receivable has been successfully financed. Lender details are kept confidential to protect privacy.
+                        </p>
+                    </div>
+                </motion.div>
+            )}
+
             {/* Invoice Details Card */}
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mg-card rounded-2xl p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -169,10 +192,10 @@ export default function MSMEInvoiceDetailsPage() {
             </motion.div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Timeline */}
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                {/* Timeline - temporarily disabled */}
+                {/* <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                     <InvoiceTimeline invoiceId={invoice.invoiceId} />
-                </motion.div>
+                </motion.div> */}
 
                 {/* Assurance Report */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>

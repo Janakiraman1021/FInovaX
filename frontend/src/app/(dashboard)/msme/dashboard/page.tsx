@@ -129,6 +129,13 @@ export default function MSMEDashboardPage() {
                                 ))}
                             </tbody>
                         </table>
+                        {invoices.filter(i => i.status === "FINANCED").length > 0 && (
+                            <div className="px-6 py-3 border-t border-mg-lavender/10 bg-status-success/5">
+                                <p className="text-[10px] text-status-success font-medium">
+                                    💡 Financed invoices respect cross-lender privacy. Other lender details are not visible.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className="space-y-6">

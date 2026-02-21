@@ -7,9 +7,10 @@ import { InvoiceTimeline } from "@/components/shared/InvoiceTimeline";
 import { AssuranceReportViewer } from "@/components/shared/AssuranceReportViewer";
 import { TrustScoreCard } from "@/components/shared/TrustScoreCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { InteroperabilityBadge } from "@/components/shared/InteroperabilityBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { FileText, ExternalLink, Copy, Check, ArrowLeft, Loader2, Building2 } from "lucide-react";
+import { FileText, ExternalLink, Copy, Check, ArrowLeft, Loader2, Building2, Lock } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -75,12 +76,12 @@ export default function LenderInvoiceDetailsPage() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
+            {/* Header with Interoperability Badge */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
                 <Link href="/lender/loans" className="inline-flex items-center gap-2 text-sm text-mg-muted hover:text-mg-silver transition-colors mb-4">
                     <ArrowLeft className="w-4 h-4" /> Back to Invoices
                 </Link>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <p className="mg-label mb-1.5">Invoice Details</p>
                         <h1 className="text-2xl sm:text-3xl font-bold text-mg-silver tracking-tight">
@@ -88,9 +89,33 @@ export default function LenderInvoiceDetailsPage() {
                         </h1>
                         <p className="text-sm text-mg-muted mt-1">{invoice.description || "No description"}</p>
                     </div>
-                    <StatusBadge status={invoice.status} />
+                    <div className="flex items-center gap-3">
+                        <StatusBadge status={invoice.status} />
+                        <InteroperabilityBadge />
+                    </div>
                 </div>
             </motion.div>
+
+            {/* Privacy Notice for Financed Receivables */}
+            {invoice.status === "FINANCED" && (
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="p-4 rounded-xl border flex items-start gap-3"
+                    style={{
+                        background: "rgba(5,150,105,0.06)",
+                        borderColor: "rgba(5,150,105,0.25)",
+                    }}
+                >
+                    <Lock className="w-5 h-5 text-status-success shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-sm font-semibold text-mg-silver">This receivable has already been financed</p>
+                        <p className="text-xs text-mg-muted mt-1">
+                            Cross-lender privacy rules apply. Only transaction essentials are visible.
+                        </p>
+                    </div>
+                </motion.div>
+            )}
 
             {/* Invoice Details Card */}
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mg-card rounded-2xl p-6">
@@ -103,21 +128,31 @@ export default function LenderInvoiceDetailsPage() {
                                 {formatCurrency(invoice.amount)} <span className="text-sm font-normal text-mg-dim">{invoice.currency}</span>
                             </p>
                         </div>
-                        <div>
-                            <p className="text-xs uppercase tracking-widest font-semibold text-mg-dim mb-2">Uploaded By</p>
-                            <div className="flex items-center gap-2">
-                                <Building2 className="w-4 h-4 text-mg-lavender" />
+                        {invoice.status !== "FINANCED" && (
+                            <>
                                 <div>
-                                    <p className="text-sm font-semibold text-mg-silver">{invoice.uploadedBy.organization}</p>
-                                    <p className="text-xs text-mg-dim">{invoice.uploadedBy.name}</p>
+                                    <p className="text-xs uppercase tracking-widest font-semibold text-mg-dim mb-2">Uploaded By</p>
+                                    <div className="flex items-center gap-2">
+                                        <Building2 className="w-4 h-4 text-mg-lavender" />
+                                        <div>
+                                            <p className="text-sm font-semibold text-mg-silver">{invoice.uploadedBy.organization}</p>
+                                            <p className="text-xs text-mg-dim">{invoice.uploadedBy.name}</p>
+                                        </div>
+                                    </div>
                                 </div>
+                                <div>
+                                    <p className="text-xs uppercase tracking-widest font-semibold text-mg-dim mb-2">Submitted</p>
+                                    <p className="text-sm text-mg-muted">{invoice.submittedAt ? formatDate(invoice.submittedAt) : formatDate(invoice.createdAt)}</p>
+                                </div>
+                            </>
+                        )}
+                        {invoice.status === "FINANCED" && (
+                            <div>
+                                <p className="text-xs uppercase tracking-widest font-semibold text-mg-dim mb-2">Status</p>
+                                <p className="text-sm font-semibold text-status-success">Financed by a lender</p>
                             </div>
-                        </div>
-                        <div>
-                            <p className="text-xs uppercase tracking-widest font-semibold text-mg-dim mb-2">Submitted</p>
-                            <p className="text-sm text-mg-muted">{invoice.submittedAt ? formatDate(invoice.submittedAt) : formatDate(invoice.createdAt)}</p>
-                        </div>
-                        {invoice.isReceivableFinanced && (
+                        )}
+                        {invoice.isReceivableFinanced && invoice.status !== "FINANCED" && (
                             <div className="p-3 rounded-lg bg-status-danger/5 border border-status-danger/20">
                                 <p className="text-xs text-status-danger font-semibold">
                                     ⚠️ This receivable is already financed by another lender

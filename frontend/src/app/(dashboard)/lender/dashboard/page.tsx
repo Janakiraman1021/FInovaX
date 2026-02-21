@@ -6,15 +6,17 @@ import { lenderAPI, LenderInvoice } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Coins, Zap, Ban, AlertTriangle, TrendingUp, ShieldOff, ClipboardCheck } from "lucide-react";
+import { Coins, Zap, Ban, AlertTriangle, TrendingUp, ShieldOff, ClipboardCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import BlockchainVisualizer from "@/components/oneflow/BlockchainVisualizer";
 
 export default function LenderDashboard() {
     const [invoices, setInvoices]     = useState<LenderInvoice[]>([]);
     const [processing, setProcessing] = useState<string | null>(null);
+    const [loading, setLoading]       = useState(true);
 
     const fetchInvoices = useCallback(async () => {
+        setLoading(true);
         try {
             const token = localStorage.getItem("oneflow-token") ?? "";
             if (!token || token.startsWith("mock.")) return;
@@ -22,6 +24,8 @@ export default function LenderDashboard() {
             setInvoices(res.data.invoices);
         } catch {
             // silently ignore on dashboard
+        } finally {
+            setLoading(false);
         }
     }, []);
 
@@ -47,15 +51,17 @@ export default function LenderDashboard() {
         }
     };
 
-    const eligible    = invoices.filter(i => i.status === "UPLOADED");
-    const financed    = invoices.filter(i => i.status === "FINANCED");
-    const blocked     = invoices.filter(i => i.status === "BLOCKED");
+    // FIXED: "SUBMITTED" invoices are those sent to lenders for review/financing.
+    // "UPLOADED" are raw uploads not yet submitted to any lender.
+    const eligible = invoices.filter(i => i.status === "SUBMITTED");
+    const financed = invoices.filter(i => i.status === "FINANCED");
+    const blocked  = invoices.filter(i => i.status === "BLOCKED");
 
     const statCards = [
-        { label: "Pending Review",     value: eligible.length,    icon: ClipboardCheck, from: "#4a4e8f", to: "#6b5ea0" },
-        { label: "Volume Disbursed",   value: formatCurrency(financed.reduce((s, i) => s + i.amount, 0)), icon: TrendingUp, from: "#059669", to: "#10b981" },
-        { label: "Blocked",            value: blocked.length,     icon: ShieldOff,      from: "#dc2626", to: "#ef4444" },
-        { label: "Total Financed",     value: financed.length,    icon: Coins,          from: "#6d28d9", to: "#4f46e5" },
+        { label: "Pending Review",   value: eligible.length,    icon: ClipboardCheck, from: "#4a4e8f", to: "#6b5ea0" },
+        { label: "Volume Disbursed", value: formatCurrency(financed.reduce((s, i) => s + i.amount, 0)), icon: TrendingUp, from: "#059669", to: "#10b981" },
+        { label: "Blocked",          value: blocked.length,     icon: ShieldOff,      from: "#dc2626", to: "#ef4444" },
+        { label: "Total Financed",   value: financed.length,    icon: Coins,          from: "#6d28d9", to: "#4f46e5" },
     ];
 
     return (
@@ -83,7 +89,9 @@ export default function LenderDashboard() {
                             <c.icon className="w-5 h-5 text-white" />
                         </div>
                         <p className="mg-label mb-1.5">{c.label}</p>
-                        <p className="text-2xl font-bold text-mg-silver">{c.value}</p>
+                        <p className="text-2xl font-bold text-mg-silver">
+                            {loading ? <span className="inline-block w-12 h-6 rounded bg-mg-elevated animate-pulse" /> : c.value}
+                        </p>
                     </motion.div>
                 ))}
             </div>
@@ -103,7 +111,12 @@ export default function LenderDashboard() {
                         </div>
                     </div>
                     <div className="p-4 space-y-3 max-h-[340px] overflow-y-auto">
-                        {eligible.length === 0 ? (
+                        {loading ? (
+                            <div className="py-14 text-center flex flex-col items-center gap-3">
+                                <Loader2 className="w-6 h-6 animate-spin text-mg-dim" />
+                                <p className="text-sm text-mg-dim italic">Loading invoices…</p>
+                            </div>
+                        ) : eligible.length === 0 ? (
                             <div className="py-14 text-center">
                                 <Coins className="w-8 h-8 text-mg-dim mx-auto mb-3" />
                                 <p className="text-sm text-mg-dim italic">No verified invoices pending disbursement</p>
@@ -143,7 +156,12 @@ export default function LenderDashboard() {
                         </div>
                     </div>
                     <div className="p-4 space-y-3">
-                        {blocked.length === 0 ? (
+                        {loading ? (
+                            <div className="py-10 text-center flex flex-col items-center gap-3">
+                                <Loader2 className="w-6 h-6 animate-spin text-mg-dim" />
+                                <p className="text-sm text-mg-dim italic">Loading…</p>
+                            </div>
+                        ) : blocked.length === 0 ? (
                             <div className="py-10 text-center"><Ban className="w-8 h-8 text-mg-dim mx-auto mb-3" /><p className="text-sm text-mg-dim italic">No blocked invoices</p></div>
                         ) : blocked.map((inv: LenderInvoice) => (
                             <div key={inv.invoiceId} className="p-4 rounded-xl border border-status-danger/20 bg-status-danger/5 flex items-center justify-between">
