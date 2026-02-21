@@ -12,8 +12,8 @@ const getDocs = (req, res) => {
         endpoints: [
             {
                 path: '/api/v1/auth',
-                methods: ['POST /register', 'POST /login', 'GET /me'],
-                description: 'Authentication and user management.'
+                methods: ['POST /register', 'POST /login', 'GET /me', 'GET /lenders'],
+                description: 'Authentication and user discovery.'
             },
             {
                 path: '/api/v1/invoices',

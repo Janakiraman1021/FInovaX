@@ -48,7 +48,6 @@ const verifyInvoice = async (req, res, next) => {
     try {
         const identifier = req.params.invoiceId;
 
-<<<<<<< HEAD
         // 1. Find invoice in DB
         // STRICT RBAC: Lender can only verify if they are the designated recipient 
         // OR if they have the specific ID (Option B support)
@@ -58,18 +57,6 @@ const verifyInvoice = async (req, res, next) => {
                 { invoiceHash: identifier }
             ]
         }).populate('uploadedBy', 'organization');
-=======
-        // Find by invoiceId, invoiceHash, or ipfsCID
-        const invoice = await Invoice.findOne({
-            $or: [
-                { invoiceId }, 
-                { invoiceHash: invoiceId },
-                { ipfsCID: invoiceId }
-            ]
-        })
-        .populate('uploadedBy', 'name email organization')
-        .populate('financedBy', 'name email organization');
->>>>>>> 70844f984f2356280189e0f926f75331760efed3
 
         if (!invoice) {
             return next(new AppError('Invoice not found or access denied', 404));
@@ -100,39 +87,7 @@ const verifyInvoice = async (req, res, next) => {
             }
         };
 
-<<<<<<< HEAD
         return sendResponse(res, 200, verificationData, 'Verification result retrieved successfully');
-=======
-        return sendResponse(res, 200, {
-            invoice: {
-                id: invoice._id,
-                invoiceId: invoice.invoiceId,
-                amount: invoice.amount,
-                currency: invoice.currency,
-                status: invoice.status,
-                invoiceHash: invoice.invoiceHash,
-                uploadedBy: invoice.uploadedBy ? {
-                    name: invoice.uploadedBy.name,
-                    email: invoice.uploadedBy.email,
-                    organization: invoice.uploadedBy.organization
-                } : null,
-                financedBy: invoice.financedBy ? {
-                    name: invoice.financedBy.name,
-                    email: invoice.financedBy.email,
-                    organization: invoice.financedBy.organization
-                } : null,
-                financedAt: invoice.financedAt,
-            },
-            verification: {
-                status: verificationLabel,
-                valid: !isFinanced,
-                duplicate: isFinanced,
-                financed: isFinanced,
-                registeredOnChain: onChainStatus ? onChainStatus.registered : false
-            },
-            canFinance,
-        });
->>>>>>> 70844f984f2356280189e0f926f75331760efed3
     } catch (error) {
         next(error);
     }

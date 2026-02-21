@@ -154,7 +154,7 @@ contract InvoiceRegistry {
      * @notice Mark a receivable as financed. Enforces one-financing-per-receivable.
      * @param receivableFingerprint SHA-256 hash of normalized receivable metadata.
      */
-    function financeReceivable(bytes32 receivableFingerprint) external {
+    function financeReceivable(bytes32 receivableFingerprint) external onlyAuthorizedLender {
         if (isReceivableFinanced[receivableFingerprint]) {
             emit DuplicateReceivableAttempt(receivableFingerprint, msg.sender);
             revert("RECEIVABLE_ALREADY_FINANCED");
