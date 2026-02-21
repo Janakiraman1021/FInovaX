@@ -5,6 +5,7 @@ const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
 const { validate } = require('../middleware/validate');
 const { invoiceUploadValidation } = require('../validators/invoice.validator');
+const { submitInvoice } = require('../controllers/invoice.controller');
 
 // All routes are protected
 router.use(protect);
