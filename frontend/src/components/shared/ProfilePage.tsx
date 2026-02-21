@@ -276,7 +276,7 @@ export default function ProfilePage() {
                                 Company Name <span className="text-status-danger">*</span>
                             </label>
                             <div className="relative flex items-center">
-                                <Briefcase className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
+                                {/* <Briefcase className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" /> */}
                                 <input value={companyName} onChange={e => { setCompanyName(e.target.value); setBizError(""); }}
                                     placeholder="e.g. Sharma Industrial Exports Ltd"
                                     className="mg-input pl-9" />
@@ -285,7 +285,7 @@ export default function ProfilePage() {
                         <div>
                             <label className="mg-label block mb-1.5">Contact Person</label>
                             <div className="relative flex items-center">
-                                <User className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
+                                {/* <User className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" /> */}
                                 <input value={contactPerson} onChange={e => setContactPerson(e.target.value)}
                                     placeholder="e.g. Arjun Sharma"
                                     className="mg-input pl-9" />
@@ -294,7 +294,7 @@ export default function ProfilePage() {
                         <div>
                             <label className="mg-label block mb-1.5">Business Email</label>
                             <div className="relative flex items-center">
-                                <Mail className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
+                                {/* <Mail className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" /> */}
                                 <input type="email" value={bizEmail} onChange={e => setBizEmail(e.target.value)}
                                     placeholder="biz@company.com"
                                     className="mg-input pl-9" />
@@ -303,7 +303,7 @@ export default function ProfilePage() {
                         <div>
                             <label className="mg-label block mb-1.5">Phone</label>
                             <div className="relative flex items-center">
-                                <Phone className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
+                                {/* <Phone className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" /> */}
                                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                                     placeholder="+91-9876543210"
                                     className="mg-input pl-9" />
@@ -314,7 +314,8 @@ export default function ProfilePage() {
                     <div>
                         <label className="mg-label block mb-1.5">
                             <span className="inline-flex items-center gap-1.5">
-                                <MapPin className="w-3.5 h-3.5" />Address
+                                {/* <MapPin className="w-3.5 h-3.5" /> */}
+                                Address
                             </span>
                         </label>
                         <textarea value={address} onChange={e => setAddress(e.target.value)}
