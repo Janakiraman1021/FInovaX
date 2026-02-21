@@ -29,7 +29,10 @@ const auditLogSchema = new mongoose.Schema(
                 'DUPLICATE_RECEIVABLE_FINANCING_ATTEMPT',
                 // Duplicate attempt tracking
                 'DUPLICATE_FINANCING_ATTEMPT',
-                'DUPLICATE_ATTEMPT'
+                'DUPLICATE_ATTEMPT',
+                // Assurance report events
+                'ASSURANCE_REPORT_SUBMITTED',
+                'ASSURANCE_REPORT_ACKNOWLEDGED'
             ],
             index: true,
         },

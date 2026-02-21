@@ -371,11 +371,12 @@ export interface AssuranceReport {
     _id: string;
     invoiceId: string;
     receivableFingerprint: string;
-    submittedBy: string;
-    usageCategory: 'WORKING_CAPITAL' | 'EXPANSION' | 'DEBT_REPAYMENT' | 'OTHER';
+    msmeId: string;
+    lenderId: string;
+    usageCategory: 'RAW_MATERIAL' | 'VENDOR_PAYMENT' | 'WORKING_CAPITAL' | 'LOGISTICS' | 'OTHER';
     description?: string;
-    status: 'PENDING' | 'ACKNOWLEDGED';
-    acknowledgedBy?: string;
+    attachments?: string[];
+    status: 'SUBMITTED' | 'ACKNOWLEDGED';
     acknowledgedAt?: string;
     createdAt: string;
 }

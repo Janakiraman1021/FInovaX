@@ -15,9 +15,10 @@ interface AssuranceReportViewerProps {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
+    RAW_MATERIAL: "Raw Material Purchase",
+    VENDOR_PAYMENT: "Vendor Payment",
     WORKING_CAPITAL: "Working Capital",
-    EXPANSION: "Business Expansion",
-    DEBT_REPAYMENT: "Debt Repayment",
+    LOGISTICS: "Logistics & Transportation",
     OTHER: "Other",
 };
 

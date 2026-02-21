@@ -18,6 +18,6 @@ router.use('/lender', lenderRoutes);
 router.use('/audit', auditRoutes);
 router.use('/health', healthRoutes);
 router.use('/docs', docsRoutes);
-router.use('/', trustRoutes);
+router.use('/trust', trustRoutes);
 
 module.exports = router;

@@ -14,9 +14,10 @@ interface AssuranceReportFormProps {
 }
 
 const USAGE_CATEGORIES = [
+    { value: "RAW_MATERIAL", label: "Raw Material Purchase" },
+    { value: "VENDOR_PAYMENT", label: "Vendor Payment" },
     { value: "WORKING_CAPITAL", label: "Working Capital" },
-    { value: "EXPANSION", label: "Business Expansion" },
-    { value: "DEBT_REPAYMENT", label: "Debt Repayment" },
+    { value: "LOGISTICS", label: "Logistics & Transportation" },
     { value: "OTHER", label: "Other" },
 ] as const;
 

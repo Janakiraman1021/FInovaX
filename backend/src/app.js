@@ -8,7 +8,7 @@ const { errorHandler } = require('./middleware/errorHandler');
 const requestIdMiddleware = require('./middleware/requestId');
 const v1Routes = require('./routes/v1.routes');
 const msmeProfileRoutes = require("./routes/msmeProfileRoutes");
-const trustRoutes = require('./routes/trust.routes');
+// const trustRoutes = require('./routes/trust.routes');
 
 const app = express();
 
@@ -50,6 +50,7 @@ const invoiceRoutes = require('./routes/invoice.routes');
 const blockchainRoutes = require('./routes/blockchain.routes');
 const lenderRoutes = require('./routes/lender.routes');
 const auditRoutes = require('./routes/audit.routes');
+const trustRoutes = require('./routes/trust.routes');
 
 app.use('/auth', authRoutes);
 app.use('/invoices', invoiceRoutes);
