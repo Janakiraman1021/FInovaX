@@ -5,9 +5,15 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "seed": "node src/scripts/seed.js"
   },
-  "keywords": ["fintech", "blockchain", "invoice", "audit"],
+  "keywords": [
+    "fintech",
+    "blockchain",
+    "invoice",
+    "audit"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
