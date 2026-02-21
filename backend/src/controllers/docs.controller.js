@@ -1,3 +1,5 @@
+const { sendResponse } = require('../utils/response');
+
 /**
  * GET /docs
  * Returns structured API documentation.
@@ -44,11 +46,7 @@ const getDocs = (req, res) => {
         }
     };
 
-    res.json({
-        success: true,
-        data: docs,
-        requestId: req.requestId
-    });
+    return sendResponse(res, 200, docs);
 };
 
 module.exports = { getDocs };
