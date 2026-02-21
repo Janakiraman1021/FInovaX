@@ -1,6 +1,7 @@
 const AuditLog = require('../models/AuditLog');
 const AppError = require('../utils/AppError');
-const Invoice  = require('../models/Invoice');
+const Invoice = require('../models/Invoice');
+const { sendResponse } = require('../utils/response');
 
 /**
  * GET /audit/invoices
@@ -24,16 +25,13 @@ const getAllInvoices = async (req, res, next) => {
             Invoice.countDocuments(filter),
         ]);
 
-        res.json({
-            success: true,
-            data: {
-                invoices,
-                pagination: {
-                    total,
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    totalPages: Math.ceil(total / parseInt(limit)),
-                },
+        return sendResponse(res, 200, {
+            invoices,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / parseInt(limit)),
             },
         });
     } catch (error) {
@@ -64,16 +62,13 @@ const getAuditLogs = async (req, res, next) => {
             AuditLog.countDocuments(filter),
         ]);
 
-        res.json({
-            success: true,
-            data: {
-                logs,
-                pagination: {
-                    total,
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    totalPages: Math.ceil(total / parseInt(limit)),
-                },
+        return sendResponse(res, 200, {
+            logs,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / parseInt(limit)),
             },
         });
     } catch (error) {
@@ -103,16 +98,12 @@ const getInvoiceAuditLogs = async (req, res, next) => {
             .populate('performedBy', 'name email role')
             .sort({ createdAt: -1 });
 
-        res.json({
-            success: true,
-            data: { logs },
-        });
+        return sendResponse(res, 200, { logs });
     } catch (error) {
         next(error);
     }
 };
 
-<<<<<<< HEAD
 const getReceivableAuditLogs = async (req, res, next) => {
     try {
         const { fingerprint } = req.params;
@@ -121,16 +112,10 @@ const getReceivableAuditLogs = async (req, res, next) => {
             .populate('performedBy', 'name email role')
             .sort({ createdAt: -1 });
 
-        res.json({
-            success: true,
-            data: { logs },
-        });
+        return sendResponse(res, 200, { logs });
     } catch (error) {
         next(error);
     }
 };
 
-module.exports = { getAuditLogs, getInvoiceAuditLogs, getReceivableAuditLogs };
-=======
-module.exports = { getAllInvoices, getAuditLogs, getInvoiceAuditLogs };
->>>>>>> fd51e07e76cb493c946db651dd9ec9b2ed378cca
+module.exports = { getAllInvoices, getAuditLogs, getInvoiceAuditLogs, getReceivableAuditLogs };

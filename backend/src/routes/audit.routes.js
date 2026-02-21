@@ -1,10 +1,6 @@
 const express = require('express');
 const router = express.Router();
-<<<<<<< HEAD
-const { getAuditLogs, getInvoiceAuditLogs, getReceivableAuditLogs } = require('../controllers/audit.controller');
-=======
-const { getAllInvoices, getAuditLogs, getInvoiceAuditLogs } = require('../controllers/audit.controller');
->>>>>>> fd51e07e76cb493c946db651dd9ec9b2ed378cca
+const { getAllInvoices, getAuditLogs, getInvoiceAuditLogs, getReceivableAuditLogs } = require('../controllers/audit.controller');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
 

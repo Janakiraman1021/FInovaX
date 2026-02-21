@@ -5,12 +5,6 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const { errorHandler } = require('./middleware/errorHandler');
 
-const authRoutes = require('./routes/auth.routes');
-const invoiceRoutes = require('./routes/invoice.routes');
-const blockchainRoutes = require('./routes/blockchain.routes');
-const lenderRoutes = require('./routes/lender.routes');
-const auditRoutes = require('./routes/audit.routes');
-
 const requestIdMiddleware = require('./middleware/requestId');
 const v1Routes = require('./routes/v1.routes');
 
