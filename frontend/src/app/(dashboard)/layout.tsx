@@ -4,17 +4,22 @@ import { useAuth } from "@/context/AuthContext";
 import { Navbar } from "@/components/shared/Navbar";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { isAuthenticated, isHydrating } = useAuth();
     const router = useRouter();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
         if (!isHydrating && !isAuthenticated) router.push("/login");
     }, [isHydrating, isAuthenticated, router]);
 
-    // Wait for session restore before making any auth decisions
+    // Close sidebar on route change (mobile)
+    useEffect(() => {
+        setSidebarOpen(false);
+    }, [router]);
+
     if (isHydrating) {
         return (
             <div className="flex items-center justify-center h-screen" style={{ background: "var(--mg-base)" }}>
@@ -27,9 +32,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <div className="flex flex-col h-screen overflow-hidden" style={{ background: "var(--mg-base)" }}>
-            <Navbar />
+            <Navbar onToggleSidebar={() => setSidebarOpen(v => !v)} />
             <div className="flex flex-1 overflow-hidden">
-                <Sidebar />
+                <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
                 <main className="flex-1 overflow-y-auto relative">
                     {/* Subtle ambient glow — top right */}
                     <div className="pointer-events-none absolute top-0 right-0 w-96 h-72 rounded-full blur-[100px] opacity-15"
@@ -37,7 +42,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {/* Subtle ambient glow — bottom left */}
                     <div className="pointer-events-none absolute bottom-0 left-0 w-80 h-64 rounded-full blur-[80px] opacity-10"
                         style={{ background: "radial-gradient(ellipse, rgba(107,94,160,0.14) 0%, transparent 70%)" }} />
-                    <div className="relative z-10 max-w-7xl mx-auto p-8">
+                    <div className="relative z-10 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
                         {children}
                     </div>
                 </main>

@@ -128,11 +128,11 @@ export default function LenderLoans() {
 
     return (
         <>
-            <div>
-                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+            <div className="space-y-6">
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
                         <p className="mg-label mb-1.5">Lender Console</p>
-                        <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-mg-silver tracking-tight">
                             Invoice <span className="mg-accent-text">Ledger</span>
                         </h1>
                         <p className="text-sm text-mg-muted mt-1">
@@ -183,9 +183,13 @@ export default function LenderLoans() {
                         <table className="w-full mg-table">
                             <thead>
                                 <tr>
-                                    {["Invoice ID", "Company", "Amount", "Date", "Hash", "Status", "Actions"].map(h => (
-                                        <th key={h} className="text-left">{h}</th>
-                                    ))}
+                                    <th className="text-left">Invoice ID</th>
+                                    <th className="text-left hidden sm:table-cell">Company</th>
+                                    <th className="text-left">Amount</th>
+                                    <th className="text-left">Date</th>
+                                    <th className="text-left hidden lg:table-cell">Hash</th>
+                                    <th className="text-left">Status</th>
+                                    <th className="text-left">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -212,7 +216,7 @@ export default function LenderLoans() {
                                             <p className="font-medium text-mg-silver text-sm">{inv.invoiceId}</p>
                                             <p className="text-[10px] text-mg-dim mt-0.5">{inv.originalFileName ?? "—"}</p>
                                         </td>
-                                        <td>
+                                        <td className="hidden sm:table-cell">
                                             <p className="text-mg-silver text-sm">{inv.uploadedBy?.organization ?? "—"}</p>
                                             <p className="text-[10px] text-mg-dim">{inv.uploadedBy?.name}</p>
                                         </td>
@@ -221,7 +225,7 @@ export default function LenderLoans() {
                                             <span className="text-[10px] font-normal text-mg-dim">{inv.currency}</span>
                                         </td>
                                         <td className="text-mg-muted text-sm whitespace-nowrap">{formatDate(inv.createdAt)}</td>
-                                        <td>
+                                        <td className="hidden lg:table-cell">
                                             <button onClick={() => copyHash(inv.invoiceHash, inv._id)}
                                                 title={inv.invoiceHash}
                                                 className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-mg-elevated transition-colors group">

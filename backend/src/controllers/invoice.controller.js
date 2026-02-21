@@ -74,9 +74,7 @@ const createInvoice = async (req, res, next) => {
             invoiceDate: parsedInvoiceDate
         });
 
-<<<<<<< HEAD
         // 4. Upload to IPFS
-=======
         // 4. Check if this specific receivable obligation is already financed
         const financedReceivable = await Invoice.findOne({
             receivableFingerprint,
@@ -91,7 +89,6 @@ const createInvoice = async (req, res, next) => {
         }
 
         // 5. Upload to IPFS
->>>>>>> 04099a4829086fa97dd693d813c7268012847278
         const ipfsResult = await uploadToIPFS(fileBuffer, req.file.originalname);
 
         // 5. Anchor to Blockchain (Informational Registration)

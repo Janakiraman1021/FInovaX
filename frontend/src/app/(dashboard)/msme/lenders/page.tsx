@@ -45,7 +45,7 @@ export default function LendersPage() {
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                     <p className="mg-label mb-1.5">MSME Portal</p>
-                    <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-mg-silver tracking-tight">
                         Discover <span className="mg-accent-text">Lenders</span>
                     </h1>
                     <p className="text-sm text-mg-muted mt-1">

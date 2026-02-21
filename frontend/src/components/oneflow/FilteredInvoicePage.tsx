@@ -39,7 +39,7 @@ export default function FilteredInvoicePage({
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                     <p className="mg-label mb-1.5">{sectionLabel}</p>
-                    <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-mg-silver tracking-tight">
                         {title.split(" ").slice(0, -1).join(" ")}{" "}
                         <span className={accentClass}>{title.split(" ").slice(-1)}</span>
                     </h1>
@@ -64,7 +64,14 @@ export default function FilteredInvoicePage({
                 )}
                 <div className="overflow-x-auto">
                     <table className="w-full mg-table">
-                        <thead><tr>{["Invoice ID","Description","Amount","Date","Status","Tx"].map(h => <th key={h} className="text-left">{h}</th>)}</tr></thead>
+                        <thead><tr>
+                            <th className="text-left">Invoice ID</th>
+                            <th className="text-left hidden sm:table-cell">Description</th>
+                            <th className="text-left">Amount</th>
+                            <th className="text-left">Date</th>
+                            <th className="text-left">Status</th>
+                            <th className="text-left hidden sm:table-cell">Tx</th>
+                        </tr></thead>
                         <tbody>
                             {loading ? (
                                 <tr><td colSpan={6} className="py-16 text-center">
@@ -88,11 +95,11 @@ export default function FilteredInvoicePage({
                                         <p className="font-medium text-mg-silver text-sm">{inv.id}</p>
                                         <p className="font-mono text-[10px] text-mg-dim mt-0.5 truncate max-w-[120px]">{inv.invoiceHash?.slice(0, 12)}…</p>
                                     </td>
-                                    <td className="text-mg-muted text-sm max-w-[160px] truncate">{inv.description}</td>
+                                    <td className="text-mg-muted text-sm max-w-[160px] truncate hidden sm:table-cell">{inv.description}</td>
                                     <td className="font-semibold text-mg-silver">{formatCurrency(inv.amount)}</td>
                                     <td className="text-mg-muted text-sm">{formatDate(inv.timestamp)}</td>
                                     <td><StatusBadge status={inv.status} /></td>
-                                    <td>
+                                    <td className="hidden sm:table-cell">
                                         {inv.ledgerTx ? (
                                             <a href={`https://cardona-zkevm.polygonscan.com/tx/${inv.ledgerTx}`} target="_blank" rel="noopener noreferrer"
                                                 className="p-1.5 rounded-md hover:bg-mg-elevated text-mg-dim hover:text-mg-lavender transition-colors inline-flex">

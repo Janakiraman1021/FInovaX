@@ -42,13 +42,13 @@ export default function MSMEDashboardPage() {
 
     return (
         <div className="space-y-8">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                     <p className="mg-label mb-1.5">MSME Portal</p>
-                    <h1 className="text-3xl font-bold text-mg-silver tracking-tight">Portfolio <span className="mg-accent-text">Overview</span></h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-mg-silver tracking-tight">Portfolio <span className="mg-accent-text">Overview</span></h1>
                     <p className="text-sm text-mg-muted mt-1">Manage your verified receivables and financing status</p>
                 </div>
-                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-mg-card border border-status-success/25">
+                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-mg-card border border-status-success/25 self-start sm:self-auto">
                     <div className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse shadow-[0_0_6px_rgba(5,150,105,0.5)]" />
                     <span className="text-[10px] uppercase font-semibold text-status-success tracking-widest">Ledger Live</span>
                 </div>

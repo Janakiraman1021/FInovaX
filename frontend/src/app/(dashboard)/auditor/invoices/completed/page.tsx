@@ -41,10 +41,10 @@ export default function AuditorCompletedInvoices() {
 
     return (
         <div className="space-y-8">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                     <p className="mg-label mb-1.5">Regulator View</p>
-                    <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-mg-silver tracking-tight">
                         Completed <span className="mg-accent-text">Audits</span>
                     </h1>
                     <p className="text-sm text-mg-muted mt-1">Invoices that have been financed or blocked</p>

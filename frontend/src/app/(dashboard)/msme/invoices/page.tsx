@@ -86,10 +86,10 @@ export default function MSMEInvoicesPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                     <p className="mg-label mb-1.5">MSME Portal</p>
-                    <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-mg-silver tracking-tight">
                         My <span className="mg-accent-text">Invoices</span>
                     </h1>
                     <p className="text-sm text-mg-muted mt-1">
@@ -145,9 +145,14 @@ export default function MSMEInvoicesPage() {
                     <table className="w-full mg-table">
                         <thead>
                             <tr>
-                                {["Invoice ID", "Description", "Amount", "Date", "Status", "CID", "IPFS", "On-Chain"].map(h => (
-                                    <th key={h} className="text-left">{h}</th>
-                                ))}
+                                <th className="text-left">Invoice ID</th>
+                                <th className="text-left hidden sm:table-cell">Description</th>
+                                <th className="text-left">Amount</th>
+                                <th className="text-left">Date</th>
+                                <th className="text-left">Status</th>
+                                <th className="text-left hidden md:table-cell">CID</th>
+                                <th className="text-left hidden md:table-cell">IPFS</th>
+                                <th className="text-left hidden sm:table-cell">On-Chain</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -183,7 +188,7 @@ export default function MSMEInvoicesPage() {
                                             {inv.invoiceHash.slice(0, 14)}…
                                         </p>
                                     </td>
-                                    <td className="text-mg-muted text-sm max-w-[180px] truncate">
+                                    <td className="text-mg-muted text-sm max-w-[180px] truncate hidden sm:table-cell">
                                         {inv.description || <span className="italic text-mg-dim">—</span>}
                                     </td>
                                     <td className="font-semibold text-mg-silver whitespace-nowrap">
@@ -194,7 +199,7 @@ export default function MSMEInvoicesPage() {
                                         {formatDate(inv.createdAt)}
                                     </td>
                                     <td><StatusBadge status={inv.status} /></td>
-                                    <td>
+                                    <td className="hidden md:table-cell">
                                         {inv.ipfsCID ? (
                                             <button
                                                 onClick={() => copyToClipboard(inv.ipfsCID!, inv.invoiceId)}
@@ -209,7 +214,7 @@ export default function MSMEInvoicesPage() {
                                             </button>
                                         ) : <span className="text-mg-dim text-xs">—</span>}
                                     </td>
-                                    <td>
+                                    <td className="hidden md:table-cell">
                                         {inv.ipfsCID ? (
                                             <a href={`https://ipfs.io/ipfs/${inv.ipfsCID}`}
                                                 target="_blank" rel="noopener noreferrer"
@@ -219,8 +224,7 @@ export default function MSMEInvoicesPage() {
                                             </a>
                                         ) : <span className="text-mg-dim text-xs">—</span>}
                                     </td>
-                                    {/* On-Chain column */}
-                                    <td>
+                                    <td className="hidden sm:table-cell">
                                         {inv.blockchainTxHash ? (
                                             <div className="flex items-center gap-1.5">
                                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"

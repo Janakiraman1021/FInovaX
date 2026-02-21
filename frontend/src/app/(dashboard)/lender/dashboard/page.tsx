@@ -60,15 +60,15 @@ export default function LenderDashboard() {
 
     return (
         <div className="space-y-8">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                     <p className="mg-label mb-1.5">Lender Console</p>
-                    <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-mg-silver tracking-tight">
                         Liquidity <span className="mg-accent-text">Terminal</span>
                     </h1>
                     <p className="text-sm text-mg-muted mt-1">Verify invoice hashes and disburse capital to eligible MSMEs</p>
                 </div>
-                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-mg-card border border-status-success/25">
+                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-mg-card border border-status-success/25 self-start sm:self-auto">
                     <Zap className="w-3 h-3 text-status-success" />
                     <span className="text-[10px] uppercase font-semibold text-status-success tracking-widest">DeFi Ready</span>
                 </div>

@@ -6,7 +6,7 @@ import {
     LayoutDashboard, FileUp, FileText, History, User, CheckCircle,
     Clock, XCircle, AlertTriangle, Search, Layers, DollarSign,
     FileSearch, Flag, CreditCard, Activity, Shield, ShieldCheck,
-    BarChart3, ClipboardList, Hourglass, LogOut,
+    BarChart3, ClipboardList, Hourglass, LogOut, X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -100,19 +100,48 @@ const menuItems: Record<string, NavSection[]> = {
     ],
 };
 
-export const Sidebar = () => {
+interface SidebarProps {
+    open?: boolean;
+    onClose?: () => void;
+}
+
+export const Sidebar = ({ open = false, onClose }: SidebarProps) => {
     const { role, logout } = useAuth();
     const pathname  = usePathname();
     const sections  = role ? menuItems[role as keyof typeof menuItems] ?? [] : [];
     const accent    = role ? roleAccent[role as keyof typeof roleAccent] : roleAccent.msme;
 
     return (
-        <motion.aside
-            initial={{ opacity: 0, x: -16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="mg-sidebar w-60 flex flex-col h-[calc(100vh-64px)] overflow-y-auto shrink-0"
-        >
+        <>
+            {/* Mobile backdrop */}
+            {open && (
+                <div
+                    className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+                    onClick={onClose}
+                />
+            )}
+
+            <motion.aside
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+                className={cn(
+                    "mg-sidebar flex flex-col overflow-y-auto shrink-0 transition-transform duration-300",
+                    // Desktop: always visible, static layout
+                    "lg:static lg:translate-x-0 lg:w-60 lg:h-[calc(100vh-64px)] lg:z-auto",
+                    // Mobile: fixed drawer, slides in/out
+                    "fixed top-0 left-0 w-72 h-full z-50",
+                    open ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+                )}
+            >
+            {/* Mobile close button */}
+            <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-mg-lavender/10">
+                <span className="text-sm font-semibold text-mg-silver">Menu</span>
+                <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-mg-surface transition-colors">
+                    <X className="w-4 h-4 text-mg-dim" />
+                </button>
+            </div>
+
             <nav className="flex-1 py-4 px-3 space-y-4">
                 {sections.map((sec) => (
                     <div key={sec.section}>
@@ -129,6 +158,7 @@ export const Sidebar = () => {
                                     >
                                         <Link
                                             href={item.href}
+                                            onClick={() => onClose?.()}
                                             className={cn(
                                                 "relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 group border",
                                                 isActive
@@ -175,5 +205,6 @@ export const Sidebar = () => {
                 </button>
             </div>
         </motion.aside>
+        </>
     );
 };
