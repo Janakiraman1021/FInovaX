@@ -18,6 +18,12 @@ export const InvoiceUploader = () => {
     const [amount, setAmount]       = useState("");
     const [currency, setCurrency]   = useState<string>("INR");
     const [description, setDesc]    = useState("");
+    const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+    const [dueDate, setDueDate]     = useState(() => {
+        const date = new Date();
+        date.setDate(date.getDate() + 30);
+        return date.toISOString().split('T')[0];
+    });
     const [stage, setStage]         = useState<Stage>("idle");
     const [progress, setProgress]   = useState(0);
     const [result, setResult]       = useState<UploadedInvoice | null>(null);
@@ -29,12 +35,20 @@ export const InvoiceUploader = () => {
         if (!file)                        errs.file   = "Please select a PDF file.";
         if (!amount || parseFloat(amount) <= 0) errs.amount = "Enter a valid amount.";
         if (!description.trim())          errs.desc   = "Description is required.";
+        if (!invoiceDate)                 errs.invoiceDate = "Invoice date is required.";
+        if (dueDate && new Date(dueDate) < new Date(invoiceDate)) {
+            errs.dueDate = "Due date must be after invoice date.";
+        }
         setFieldErrors(errs);
         return Object.keys(errs).length === 0;
     };
 
     const resetForm = () => {
         setFile(null); setAmount(""); setDesc(""); setCurrency("INR");
+        setInvoiceDate(new Date().toISOString().split('T')[0]);
+        const dueDateDefault = new Date();
+        dueDateDefault.setDate(dueDateDefault.getDate() + 30);
+        setDueDate(dueDateDefault.toISOString().split('T')[0]);
         setStage("idle"); setProgress(0); setResult(null); setErrMsg(""); setFieldErrors({});
     };
 
@@ -74,6 +88,8 @@ export const InvoiceUploader = () => {
             formData.append("amount", amount);
             formData.append("currency", currency);
             formData.append("description", description.trim());
+            formData.append("invoiceDate", invoiceDate);
+            formData.append("dueDate", dueDate);
 
             setStage("uploading");
             setProgress(60);
@@ -251,6 +267,38 @@ export const InvoiceUploader = () => {
                             <AlertCircle className="w-3 h-3" />{fieldErrors.desc}
                         </p>
                     )}
+                </div>
+
+                {/* Invoice Date & Due Date */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div>
+                        <label className="mg-label block mb-1.5">Invoice Date</label>
+                        <input 
+                            type="date" 
+                            value={invoiceDate}
+                            onChange={e => { setInvoiceDate(e.target.value); setFieldErrors(fe => ({ ...fe, invoiceDate: "" })); }}
+                            className={cn("mg-input", fieldErrors.invoiceDate && "border-status-danger")} 
+                        />
+                        {fieldErrors.invoiceDate && (
+                            <p className="text-[10px] text-status-danger mt-1 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />{fieldErrors.invoiceDate}
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <label className="mg-label block mb-1.5">Due Date (Optional)</label>
+                        <input 
+                            type="date" 
+                            value={dueDate}
+                            onChange={e => { setDueDate(e.target.value); setFieldErrors(fe => ({ ...fe, dueDate: "" })); }}
+                            className={cn("mg-input", fieldErrors.dueDate && "border-status-danger")} 
+                        />
+                        {fieldErrors.dueDate && (
+                            <p className="text-[10px] text-status-danger mt-1 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />{fieldErrors.dueDate}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 {/* API error */}

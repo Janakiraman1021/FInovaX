@@ -20,6 +20,12 @@ let contract = null;
 const initEventListeners = () => {
     const rpcUrl = process.env.SEPOLIA_RPC_URL; // Or WSS URL if available
     const contractAddress = process.env.INVOICE_REGISTRY_CONTRACT;
+    const enableListeners = process.env.ENABLE_EVENT_LISTENERS === 'true';
+
+    if (!enableListeners) {
+        console.log('ℹ️  Blockchain event listeners disabled (set ENABLE_EVENT_LISTENERS=true to enable)');
+        return;
+    }
 
     if (!rpcUrl || !contractAddress) {
         console.warn('⚠️  Blockchain credentials missing — event listeners disabled');
@@ -31,7 +37,16 @@ const initEventListeners = () => {
         provider = new ethers.JsonRpcProvider(rpcUrl);
         contract = new ethers.Contract(contractAddress, CONTRACT_ABI, provider);
 
-        console.log('🎧 Blockchain event listeners started (Sepolia)');
+        console.log('🎧 Blockchain event listeners starting (Sepolia)...');
+        console.log('⚠️  WARNING: Event listeners may hit Infura rate limits on free tier');
+
+        // Add error handler for provider
+        provider.on('error', (error) => {
+            console.error('Provider error:', error.message);
+            if (error.message.includes('Too Many Requests')) {
+                console.error('⚠️  Infura rate limit reached. Consider upgrading your plan or disabling listeners.');
+            }
+        });
 
         // Listen: InvoiceRegistered
         contract.on('InvoiceRegistered', async (invoiceHash, invoiceIdStr, registeredBy, timestamp, event) => {
@@ -139,6 +154,13 @@ const initEventListeners = () => {
 
     } catch (error) {
         console.error('Event listener init error:', error.message);
+        if (error.code === 'BAD_DATA' && error.info?.payload?.method === 'eth_newFilter') {
+            console.error('⚠️  Failed to create blockchain filters. This is usually due to:');
+            console.error('   1. Infura rate limits (upgrade plan or reduce requests)');
+            console.error('   2. Network connectivity issues');
+            console.error('   3. Invalid RPC URL');
+            console.error('\n💡 TIP: Set ENABLE_EVENT_LISTENERS=false in .env to disable listeners');
+        }
     }
 };
 
