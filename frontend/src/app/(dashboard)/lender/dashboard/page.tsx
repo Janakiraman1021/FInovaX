@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { Coins, Zap, Ban, AlertTriangle, TrendingUp, ShieldOff, ClipboardCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import BlockchainVisualizer from "@/components/oneflow/BlockchainVisualizer";
+import { InteroperabilityBadge } from "@/components/shared/InteroperabilityBadge";
 
 export default function LenderDashboard() {
     const [invoices, setInvoices]     = useState<LenderInvoice[]>([]);
@@ -74,9 +75,12 @@ export default function LenderDashboard() {
                     </h1>
                     <p className="text-sm text-mg-muted mt-1">Verify invoice hashes and disburse capital to eligible MSMEs</p>
                 </div>
-                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-mg-card border border-status-success/25 self-start sm:self-auto">
-                    <Zap className="w-3 h-3 text-status-success" />
-                    <span className="text-[10px] uppercase font-semibold text-status-success tracking-widest">DeFi Ready</span>
+                <div className="flex items-center gap-3 flex-wrap">
+                    <InteroperabilityBadge />
+                    <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-mg-card border border-status-success/25">
+                        <Zap className="w-3 h-3 text-status-success" />
+                        <span className="text-[10px] uppercase font-semibold text-status-success tracking-widest">DeFi Ready</span>
+                    </div>
                 </div>
             </motion.div>
 

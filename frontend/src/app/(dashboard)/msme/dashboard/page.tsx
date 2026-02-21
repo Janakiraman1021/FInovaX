@@ -116,7 +116,14 @@ export default function MSMEDashboardPage() {
                                         </td>
                                         <td className="font-semibold text-mg-silver">{formatCurrency(inv.amount)}</td>
                                         <td className="text-mg-muted text-sm">{formatDate(inv.createdAt)}</td>
-                                        <td><StatusBadge status={inv.status} /></td>
+                                        <td>
+                                            <div className="flex flex-col gap-1">
+                                                <StatusBadge status={inv.status} />
+                                                {inv.status === "FINANCED" && (
+                                                    <span className="text-[10px] text-status-success font-medium">Financed by a lender</span>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td>
                                             {inv.ipfsCID && (
                                                 <a href={`https://gateway.pinata.cloud/ipfs/${inv.ipfsCID}`} target="_blank" rel="noopener noreferrer"

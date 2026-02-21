@@ -1,5 +1,5 @@
 import PublicShell from "@/components/shared/PublicShell";
-import { Shield, Users, Globe, Award, Zap, Lock } from "lucide-react";
+import { Shield, Users, Globe, Award, Zap, Lock, ShieldCheck, Building2, Server, GitBranch } from "lucide-react";
 
 const team = [
     { name: "Arjun Mehta",    role: "CEO & Co-founder",    bg: "#4a4e8f" },
@@ -85,6 +85,63 @@ export default function AboutPage() {
                             </div>
                         ))}
                     </div>
+                </div>
+            </section>
+
+            {/* ── Interoperability Architecture ── */}
+            <section className="max-w-4xl mx-auto px-8 py-16">
+                <div className="text-center mb-10">
+                    <span className="mg-pill mb-4 inline-flex">
+                        <ShieldCheck className="w-3 h-3 text-mg-lavender" />
+                        Architecture
+                    </span>
+                    <h2 className="text-2xl font-bold text-mg-silver tracking-tight mb-3">
+                        OneFlow <span className="mg-accent-text">Trust Layer</span>
+                    </h2>
+                    <p className="text-sm text-mg-muted max-w-xl mx-auto leading-relaxed">
+                        Verified via OneFlow Trust Layer — ERP &amp; Core Banking compatible. Designed to integrate with
+                        existing enterprise infrastructure without replacing it.
+                    </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+                    {[
+                        {
+                            icon: Server,
+                            title: "ERP Integration",
+                            desc: "SAP, Oracle, Tally-compatible adapters ingest invoice data directly. No manual re-entry.",
+                            from: "#4a4e8f", to: "#6b5ea0",
+                        },
+                        {
+                            icon: Building2,
+                            title: "Core Banking",
+                            desc: "Plugs into CBS APIs (Finacle, Temenos, BankingCloud) for real-time disbursement and reconciliation.",
+                            from: "#059669", to: "#10b981",
+                        },
+                        {
+                            icon: GitBranch,
+                            title: "GST & E-Invoice",
+                            desc: "Validates invoice authenticity against GSTIN records and NIC e-invoice portal before on-chain anchoring.",
+                            from: "#6d28d9", to: "#4f46e5",
+                        },
+                    ].map(item => (
+                        <div key={item.title} className="mg-card rounded-2xl p-6">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+                                style={{ background: `linear-gradient(135deg, ${item.from}, ${item.to})`, boxShadow: `0 0 14px ${item.from}40` }}>
+                                <item.icon className="w-5 h-5 text-white" />
+                            </div>
+                            <h3 className="font-bold text-mg-silver text-sm mb-2">{item.title}</h3>
+                            <p className="text-xs text-mg-muted leading-relaxed">{item.desc}</p>
+                        </div>
+                    ))}
+                </div>
+                <div className="p-4 rounded-xl border flex items-center gap-3"
+                    style={{ background: "rgba(79,70,229,0.05)", borderColor: "rgba(79,70,229,0.18)" }}>
+                    <ShieldCheck className="w-5 h-5 text-mg-cosmic shrink-0" />
+                    <p className="text-xs text-mg-muted leading-relaxed">
+                        <span className="font-semibold text-mg-silver">Verified via OneFlow Trust Layer</span>
+                        {" "}(ERP &amp; Core Banking compatible) — these are backend integration points, not user-configuration screens.
+                        Institutions connect via secure API adapters; no data is exposed to the UI.
+                    </p>
                 </div>
             </section>
 
