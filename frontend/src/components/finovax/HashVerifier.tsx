@@ -112,7 +112,7 @@ export const HashVerifier = () => {
             <div className="p-5 flex-1 flex flex-col gap-4">
                 {/* Input */}
                 <div className="relative">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim pointer-events-none" />
+                    {/* <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim pointer-events-none" /> */}
                     <input
                         type="text"
                         value={query}
