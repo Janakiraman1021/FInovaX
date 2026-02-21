@@ -104,7 +104,6 @@ export default function AuditFile() {
     };
 
     const searched = logs
-        .filter(l => (INVOICE_EVENT_TYPES as readonly string[]).includes(l.eventType))
         .filter(l => {
             if (!query) return true;
             const q = query.toLowerCase();
