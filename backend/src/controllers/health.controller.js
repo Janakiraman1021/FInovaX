@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { ethers } = require('ethers');
 const axios = require('axios');
 const pkg = require('../../package.json');
+const { sendResponse } = require('../utils/response');
 
 /**
  * GET /health
@@ -62,12 +63,7 @@ const getHealth = async (req, res) => {
         healthStatus.dependencies.mongodb === 'CONNECTED' &&
         healthStatus.dependencies.blockchain === 'HEALTHY';
 
-    res.status(overallHealthy ? 200 : 207).json({
-        success: true,
-        status: overallHealthy ? 'HEALTHY' : 'DEGRADED',
-        data: healthStatus,
-        requestId: req.requestId
-    });
+    return sendResponse(res, overallHealthy ? 200 : 207, healthStatus, overallHealthy ? 'System Health: OK' : 'System Health: DEGRADED');
 };
 
 module.exports = { getHealth };
