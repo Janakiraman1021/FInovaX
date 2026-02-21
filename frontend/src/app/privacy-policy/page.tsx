@@ -11,7 +11,7 @@ const sections = [
     },
     {
         title: "3. Blockchain & On-Chain Data",
-        body: `Invoice hashes registered on Polygon zkEVM are public and immutable by design. Once written to the blockchain, they cannot be deleted. We do not store personally identifiable information on-chain — only cryptographic hashes and transaction metadata.`,
+        body: `Invoice hashes registered on Polygon ETH Sepolia are public and immutable by design. Once written to the blockchain, they cannot be deleted. We do not store personally identifiable information on-chain — only cryptographic hashes and transaction metadata.`,
     },
     {
         title: "4. Data Sharing",

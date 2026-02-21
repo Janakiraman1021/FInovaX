@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
-import { Wallet, Shield, LogOut, Menu } from "lucide-react";
+import { Shield, LogOut, Menu } from "lucide-react";
 import { motion } from "framer-motion";
 
 const roleConfig: Record<string, { label: string; dot: string; accent: string }> = {
@@ -14,7 +14,6 @@ const roleConfig: Record<string, { label: string; dot: string; accent: string }>
 export const Navbar = ({ onToggleSidebar }: { onToggleSidebar?: () => void }) => {
     const { role, logout } = useAuth();
     const cfg = role ? roleConfig[role] : null;
-    const walletAddress = "0x71C7...f6D2";
 
     return (
         <motion.nav
@@ -58,29 +57,14 @@ export const Navbar = ({ onToggleSidebar }: { onToggleSidebar?: () => void }) =>
             {/* ── Right controls ── */}
             <div className="flex items-center gap-2">
 
-                {/* Divider */}
-                <div className="w-px h-6 bg-mg-lavender/10 mx-1" />
-
-                {/* Wallet info */}
-                <div className="flex items-center gap-2">
-                    <div className="hidden sm:flex flex-col items-end leading-none gap-0.5">
-                        <div className="flex items-center gap-1.5">
-                            <Wallet className="w-3 h-3 text-mg-cosmic" />
-                            <span className="text-[11px] font-mono text-mg-muted">{walletAddress}</span>
-                        </div>
-                        <span className="text-[9px] uppercase tracking-wider font-semibold text-mg-lavender/50">Polygon zkEVM</span>
-                    </div>
-                    <div className="w-2 h-2 rounded-full bg-status-success shadow-[0_0_6px_rgba(5,150,105,0.5)] animate-pulse" />
-                </div>
-
                 {/* Logout */}
-                <button
+                {/* <button
                     onClick={logout}
                     className="ml-1 p-2 rounded-lg text-mg-dim hover:text-mg-silver hover:bg-mg-card border border-transparent hover:border-mg-lavender/15 transition-all duration-150"
                     title="Sign out"
                 >
                     <LogOut className="w-4 h-4" />
-                </button>
+                </button> */}
             </div>
         </motion.nav>
     );

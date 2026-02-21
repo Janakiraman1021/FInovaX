@@ -9,7 +9,7 @@ const problems = [
 ];
 
 const solutions = [
-    { icon: Shield,    step: "01", title: "Immutable Hash on Polygon zkEVM", text: "Every uploaded invoice is SHA-256 hashed and anchored on-chain, making tampering cryptographically impossible." },
+    { icon: Shield,    step: "01", title: "Immutable Hash on Polygon ETH Sepolia", text: "Every uploaded invoice is SHA-256 hashed and anchored on-chain, making tampering cryptographically impossible." },
     { icon: Lock,      step: "02", title: "IPFS Document Storage",           text: "Sensitive PDFs live on the InterPlanetary File System. Only the hash is public — privacy by design." },
     { icon: PieChart,  step: "03", title: "ML-Driven Risk Underwriting",     text: "Real-time creditworthiness models factor 60+ signals to generate instant financing offers." },
     { icon: Zap,       step: "04", title: "Smart Contract Settlement",       text: "Capital disbursement executes in under 60 seconds via auditable smart contracts — no manual approval." },

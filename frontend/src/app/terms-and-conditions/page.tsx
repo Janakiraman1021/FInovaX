@@ -19,7 +19,7 @@ const sections = [
     },
     {
         title: "5. Invoice Upload & Blockchain Registration",
-        body: `When you upload an invoice, a SHA-256 hash of the document is calculated and optionally registered on the Polygon zkEVM blockchain. The hash is irreversible and publicly verifiable. You warrant that all invoices uploaded are genuine, accurate, and free from any existing financing arrangements with third parties.`,
+        body: `When you upload an invoice, a SHA-256 hash of the document is calculated and optionally registered on the Polygon ETH Sepolia blockchain. The hash is irreversible and publicly verifiable. You warrant that all invoices uploaded are genuine, accurate, and free from any existing financing arrangements with third parties.`,
     },
     {
         title: "6. Prohibited Activities",

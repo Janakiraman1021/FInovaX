@@ -5,7 +5,7 @@ import { lenderAPI, LenderInvoice } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { BookOpen, ExternalLink, Search, RefreshCw, AlertCircle, ShieldCheck, Copy, Check, Banknote, Loader2, X, ChevronDown } from "lucide-react";
+import { BookOpen, ExternalLink, Search, RefreshCw, AlertCircle, ShieldCheck, Copy, Check, Loader2, Banknote } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -15,7 +15,7 @@ const STATUS_FILTERS: Array<{ label: string; value: StatusFilter }> = [
     { label: "All",      value: "ALL"      },
     { label: "Pending",  value: "UPLOADED" },
     { label: "Financed", value: "FINANCED" },
-    { label: "Blocked",  value: "BLOCKED"  },
+    // { label: "Blocked",  value: "BLOCKED"  },
 ];
 
 export default function LenderLoans() {
@@ -26,10 +26,7 @@ export default function LenderLoans() {
     const [filter, setFilter]     = useState<StatusFilter>("ALL");
     const [total, setTotal]       = useState(0);
     const [copiedId, setCopiedId]   = useState<string | null>(null);
-    const [financing, setFinancing]   = useState<string | null>(null);   // invoiceId being financed
-    const [confirmInv, setConfirmInv] = useState<LenderInvoice | null>(null);
     const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);   // invoiceId being updated
-    const [openDropdown, setOpenDropdown]     = useState<string | null>(null);   // dropdown open for invoiceId
 
     const fetchInvoices = useCallback(async () => {
         setLoading(true);
@@ -48,15 +45,6 @@ export default function LenderLoans() {
 
     useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = () => setOpenDropdown(null);
-        if (openDropdown) {
-            document.addEventListener("click", handleClickOutside);
-            return () => document.removeEventListener("click", handleClickOutside);
-        }
-    }, [openDropdown]);
-
     const filtered = invoices.filter(inv => {
         const matchStatus = filter === "ALL" || inv.status === filter;
         const matchQuery  =
@@ -67,32 +55,6 @@ export default function LenderLoans() {
         return matchStatus && matchQuery;
     });
 
-    const handleFinance = async (inv: LenderInvoice) => {
-        const token = localStorage.getItem("oneflow-token") ?? "";
-        if (!token || token.startsWith("mock.")) { toast.error("Real lender account required."); return; }
-        setFinancing(inv.invoiceId);
-        setConfirmInv(null);
-        try {
-            const res = await lenderAPI.financeInvoice(token, inv.invoiceId);
-            const tx  = res.data.invoice.financeTxHash ?? "";
-            // Update status locally for the financed invoice AND block siblings
-            setInvoices(prev =>
-                prev.map(i =>
-                    i.invoiceId === inv.invoiceId
-                        ? { ...i, status: "FINANCED" as const, financeTxHash: tx }
-                        : i.ipfsCID && i.ipfsCID === inv.ipfsCID && i.invoiceId !== inv.invoiceId
-                        ? { ...i, status: "BLOCKED" as const }
-                        : i
-                )
-            );
-            toast.success("Invoice financed", { description: tx ? `TX: ${tx.slice(0,18)}…` : undefined });
-        } catch (err: unknown) {
-            toast.error("Finance failed", { description: err instanceof Error ? err.message : "Unknown error" });
-        } finally {
-            setFinancing(null);
-        }
-    };
-
     const copyHash = (hash: string, id: string) => {
         navigator.clipboard.writeText(hash);
         setCopiedId(id);
@@ -100,27 +62,24 @@ export default function LenderLoans() {
         setTimeout(() => setCopiedId(null), 2000);
     };
 
-    const handleStatusChange = async (inv: LenderInvoice, newStatus: "UPLOADED" | "FINANCED" | "BLOCKED") => {
-        if (inv.status === newStatus) { setOpenDropdown(null); return; }
+    const handleFinance = async (inv: LenderInvoice) => {
         const token = localStorage.getItem("oneflow-token") ?? "";
         if (!token || token.startsWith("mock.")) { toast.error("Real lender account required."); return; }
         setUpdatingStatus(inv.invoiceId);
-        setOpenDropdown(null);
         try {
-            const res = await lenderAPI.updateInvoiceStatus(token, inv.invoiceId, newStatus);
-            // Update local state for this invoice AND all siblings with same ipfsCID
+            const res = await lenderAPI.updateInvoiceStatus(token, inv.invoiceId, "FINANCED");
             setInvoices(prev =>
                 prev.map(i =>
                     i.invoiceId === inv.invoiceId
-                        ? { ...i, status: newStatus }
+                        ? { ...i, status: "FINANCED" as const }
                         : i.ipfsCID && i.ipfsCID === inv.ipfsCID
-                        ? { ...i, status: newStatus }
+                        ? { ...i, status: "FINANCED" as const }
                         : i
                 )
             );
-            toast.success(res.message ?? `Status updated to ${newStatus}`);
+            toast.success(res.message ?? "Invoice financed successfully");
         } catch (err: unknown) {
-            toast.error("Status update failed", { description: err instanceof Error ? err.message : "Unknown error" });
+            toast.error("Finance failed", { description: err instanceof Error ? err.message : "Unknown error" });
         } finally {
             setUpdatingStatus(null);
         }
@@ -189,7 +148,7 @@ export default function LenderLoans() {
                                     <th className="text-left">Date</th>
                                     <th className="text-left hidden lg:table-cell">Hash</th>
                                     <th className="text-left">Status</th>
-                                    <th className="text-left">Actions</th>
+                                    <th className="text-left">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -237,38 +196,7 @@ export default function LenderLoans() {
                                                     : <Copy className="w-3 h-3 text-mg-dim group-hover:text-mg-lavender shrink-0" />}
                                             </button>
                                         </td>
-                                        <td>
-                                            <div className="relative">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === inv._id ? null : inv._id); }}
-                                                    disabled={updatingStatus === inv.invoiceId}
-                                                    className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-mg-lavender/15 hover:border-mg-lavender/30 transition-colors disabled:opacity-50"
-                                                >
-                                                    {updatingStatus === inv.invoiceId ? (
-                                                        <Loader2 className="w-3 h-3 animate-spin text-mg-dim" />
-                                                    ) : (
-                                                        <StatusBadge status={inv.status} />
-                                                    )}
-                                                    <ChevronDown className="w-3 h-3 text-mg-dim" />
-                                                </button>
-                                                {openDropdown === inv._id && (
-                                                    <div className="absolute z-20 top-full left-0 mt-1 w-32 rounded-lg border border-mg-lavender/15 bg-mg-card shadow-lg overflow-hidden"
-                                                        onClick={(e) => e.stopPropagation()}>
-                                                        {(["UPLOADED", "FINANCED", "BLOCKED"] as const).map(s => (
-                                                            <button
-                                                                key={s}
-                                                                onClick={() => handleStatusChange(inv, s)}
-                                                                className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors hover:bg-mg-elevated ${
-                                                                    inv.status === s ? "bg-mg-elevated text-mg-silver" : "text-mg-muted"
-                                                                }`}
-                                                            >
-                                                                <StatusBadge status={s} />
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
+                                        <td><StatusBadge status={inv.status} /></td>
                                         <td>
                                             <div className="flex items-center gap-2">
                                                 <Link
@@ -285,11 +213,11 @@ export default function LenderLoans() {
                                                 )}
                                                 {inv.status === "UPLOADED" && (
                                                     <button
-                                                        onClick={() => setConfirmInv(inv)}
-                                                        disabled={financing === inv.invoiceId}
+                                                        onClick={() => handleFinance(inv)}
+                                                        disabled={updatingStatus === inv.invoiceId}
                                                         className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
                                                         style={{ background: "rgba(5,150,105,0.10)", border: "1px solid rgba(5,150,105,0.28)", color: "#059669" }}>
-                                                        {financing === inv.invoiceId
+                                                        {updatingStatus === inv.invoiceId
                                                             ? <Loader2 className="w-3 h-3 animate-spin" />
                                                             : <Banknote className="w-3 h-3" />}
                                                         Finance
@@ -311,47 +239,7 @@ export default function LenderLoans() {
                 </div>
             </div>
 
-            {/* Confirm Finance Modal */}
-            {confirmInv && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-                    style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-                >
-                    <motion.div
-                        initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                        className="mg-card rounded-2xl p-6 w-full max-w-md space-y-5"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between">
-                            <p className="font-bold text-mg-silver">Confirm Financing</p>
-                            <button onClick={() => setConfirmInv(null)} className="p-1 text-mg-dim hover:text-mg-silver"><X className="w-4 h-4" /></button>
-                        </div>
-                        <p className="text-sm text-mg-muted">You are about to finance the following invoice on-chain. This action is irreversible.</p>
-                        <div className="bg-mg-elevated rounded-xl border border-mg-lavender/10 p-4 space-y-2">
-                            {([
-                                ["Invoice ID",  confirmInv.invoiceId, true],
-                                ["Company",     confirmInv.uploadedBy?.organization ?? "—", false],
-                                ["Amount",      `${formatCurrency(confirmInv.amount)} ${confirmInv.currency}`, false],
-                                ["Date",        formatDate(confirmInv.createdAt), false],
-                            ] as [string, string, boolean][]).map(([k, v, mono]) => (
-                                <div key={k} className="flex justify-between items-center gap-4">
-                                    <span className="text-xs text-mg-muted">{k}</span>
-                                    <span className={`text-sm font-semibold text-mg-silver ${mono ? "font-mono" : ""}`}>{v}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex gap-3">
-                            <button onClick={() => setConfirmInv(null)}
-                                className="flex-1 px-4 py-2.5 rounded-xl border border-mg-lavender/20 text-sm font-medium text-mg-muted hover:text-mg-silver transition-colors">
-                                Cancel
-                            </button>
-                            <button onClick={() => handleFinance(confirmInv)} disabled={!!financing}
-                                className="flex-1 mg-btn-primary justify-center gap-2">
-                                {financing ? <><Loader2 className="w-4 h-4 animate-spin" />Processing…</> : <><Banknote className="w-4 h-4" />Finance Invoice</>}
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
+
         </>
     );
 }

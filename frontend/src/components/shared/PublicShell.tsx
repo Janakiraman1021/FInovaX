@@ -81,7 +81,7 @@ export default function PublicShell({ children }: { children: React.ReactNode })
                             </Link>
                         ))}
                     </nav>
-                    <p className="text-xs text-mg-dim">© 2026 OneFlow · Built on <span className="text-mg-lavender">Polygon zkEVM</span></p>
+                    <p className="text-xs text-mg-dim">© 2026 OneFlow · Built on <span className="text-mg-lavender">Polygon ETH Sepolia</span></p>
                 </div>
             </footer>
         </div>

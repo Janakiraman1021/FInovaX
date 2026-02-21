@@ -101,7 +101,7 @@ export default function FilteredInvoicePage({
                                     <td><StatusBadge status={inv.status} /></td>
                                     <td className="hidden sm:table-cell">
                                         {inv.ledgerTx ? (
-                                            <a href={`https://cardona-zkevm.polygonscan.com/tx/${inv.ledgerTx}`} target="_blank" rel="noopener noreferrer"
+                                            <a href={`https://cardona-ETH Sepolia.polygonscan.com/tx/${inv.ledgerTx}`} target="_blank" rel="noopener noreferrer"
                                                 className="p-1.5 rounded-md hover:bg-mg-elevated text-mg-dim hover:text-mg-lavender transition-colors inline-flex">
                                                 <ExternalLink className="w-3.5 h-3.5" />
                                             </a>

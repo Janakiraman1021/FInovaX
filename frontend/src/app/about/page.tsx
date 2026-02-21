@@ -10,7 +10,7 @@ const team = [
 
 const milestones = [
     { year: "2023", text: "OneFlow founded in Bengaluru with seed funding of ₹4.5 Cr." },
-    { year: "2024", text: "Launched zkEVM mainnet integration; onboarded 200+ MSMEs." },
+    { year: "2024", text: "Launched ETH Sepolia mainnet integration; onboarded 200+ MSMEs." },
     { year: "2025", text: "Crossed ₹2B+ financed volume; RBI Sandbox approval received." },
     { year: "2026", text: "Series A raise of ₹40 Cr; expanding to Southeast Asia." },
 ];
@@ -29,7 +29,7 @@ export default function AboutPage() {
                 </h1>
                 <p className="text-lg text-mg-muted max-w-2xl mx-auto leading-relaxed">
                     OneFlow is a blockchain-native invoice financing platform connecting Indian MSMEs with institutional lenders
-                    through an immutable, tamper-proof audit architecture built on Polygon zkEVM.
+                    through an immutable, tamper-proof audit architecture built on Polygon ETH Sepolia.
                 </p>
             </section>
 

@@ -8,7 +8,7 @@ import { Shield, ArrowRight, Lock, PieChart, Zap, GitBranch, CheckCircle } from 
 import Link from "next/link";
 
 const features = [
-    { icon: Shield,    title: "Blockchain Verification",  desc: "Every invoice is hashed and sealed on Polygon zkEVM — tamper-proof by design."     },
+    { icon: Shield,    title: "Blockchain Verification",  desc: "Every invoice is hashed and sealed on Polygon ETH Sepolia — tamper-proof by design."     },
     { icon: Lock,      title: "Zero-Knowledge Privacy",   desc: "IPFS-stored documents with cryptographic proofs protect sensitive trade data."       },
     { icon: PieChart,  title: "Automated Underwriting",   desc: "ML-driven risk models assess creditworthiness in real-time, enabling instant offer."  },
     { icon: Zap,       title: "Instant Disbursement",     desc: "Smart contracts settle verified invoices in under 60 seconds, no manual approval."   },
@@ -66,7 +66,7 @@ export default function LandingPage() {
                 >
                     <span className="mg-pill mb-6 inline-flex">
                         <span className="w-1.5 h-1.5 rounded-full bg-mg-lavender animate-pulse" />
-                        Built on Polygon zkEVM · IPFS · Smart Contracts
+                        Built on Polygon ETH Sepolia · IPFS · Smart Contracts
                     </span>
 
                     <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.08] mb-6 text-mg-silver">
@@ -166,7 +166,7 @@ export default function LandingPage() {
             {/* ── Footer ── */}
             <footer className="border-t border-mg-lavender/10 py-8 px-8 text-center">
                 <p className="text-xs text-mg-dim">
-                    © 2026 OneFlow · Built on <span className="text-mg-lavender">Polygon zkEVM</span> · All rights reserved
+                    © 2026 OneFlow · Built on <span className="text-mg-lavender">Polygon ETH Sepolia</span> · All rights reserved
                 </p>
             </footer>
         </div>

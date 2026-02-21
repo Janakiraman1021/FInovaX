@@ -248,7 +248,7 @@ export default function AuditFile() {
                                             </td>
                                             <td>
                                                 {log.txHash ? (
-                                                    <a href={`https://cardona-zkevm.polygonscan.com/tx/${log.txHash}`}
+                                                    <a href={`https://cardona-ETH Sepolia.polygonscan.com/tx/${log.txHash}`}
                                                         target="_blank" rel="noopener noreferrer"
                                                         className="flex items-center gap-1 font-mono text-[10px] text-mg-lavender/80 hover:text-mg-lavender transition-colors">
                                                         {log.txHash.slice(0, 10)}…
