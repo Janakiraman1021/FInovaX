@@ -46,19 +46,20 @@ const getAllInvoices = async (req, res, next) => {
  * GET /api/lender/verify/:invoiceId
  * Verify invoice status — check both DB and blockchain.
  */
-const verifyInvoice = async (req, res, next) => {
+const verifyInvoice = async (req, res) => {
     try {
-        const { invoiceId } = req.params;
+        const { hash } = req.params;
 
-        // Find by invoiceId or invoiceHash (since it could be either)
+        // Search by either invoiceHash (SHA-256) or ipfsHash (IPFS CID)
         const invoice = await Invoice.findOne({
-            $or: [{ invoiceId }, { invoiceHash: invoiceId }]
-        })
-            .populate('uploadedBy', 'name email organization')
-            .populate('financedBy', 'name email organization');
+            $or: [
+                { invoiceHash: hash },
+                { ipfsHash: hash }
+            ]
+        });
 
         if (!invoice) {
-            return next(new AppError('Invoice not found in database', 404));
+            throw new Error("Invoice not found in database");
         }
 
         // On-chain verification
