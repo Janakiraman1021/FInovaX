@@ -1,98 +1,201 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { Invoice } from "@/lib/mock/mockInvoices";
+import { useEffect, useState, useCallback } from "react";
+import { lenderAPI, LenderInvoice } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { BookOpen, ExternalLink, Search } from "lucide-react";
+import { BookOpen, ExternalLink, Search, RefreshCw, AlertCircle, ShieldCheck, Copy, Check } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
+
+type StatusFilter = "ALL" | "UPLOADED" | "FINANCED" | "BLOCKED";
+
+const STATUS_FILTERS: Array<{ label: string; value: StatusFilter }> = [
+    { label: "All",      value: "ALL"      },
+    { label: "Pending",  value: "UPLOADED" },
+    { label: "Financed", value: "FINANCED" },
+    { label: "Blocked",  value: "BLOCKED"  },
+];
 
 export default function LenderLoans() {
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [query, setQuery]       = useState("");
+    const [invoices, setInvoices] = useState<LenderInvoice[]>([]);
     const [loading, setLoading]   = useState(true);
+    const [error, setError]       = useState("");
+    const [query, setQuery]       = useState("");
+    const [filter, setFilter]     = useState<StatusFilter>("ALL");
+    const [total, setTotal]       = useState(0);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
 
-    useEffect(() => {
-        api.invoices.getAll().then((data: Invoice[]) => {
-            setInvoices(data.filter(i => i.status === "FINANCED"));
+    const fetchInvoices = useCallback(async () => {
+        setLoading(true);
+        setError("");
+        try {
+            const token = localStorage.getItem("finovax-token") ?? "";
+            const res   = await lenderAPI.getAllInvoices(token, { limit: 100 });
+            setInvoices(res.data.invoices);
+            setTotal(res.data.pagination.total);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Failed to load invoices");
+        } finally {
             setLoading(false);
-        });
+        }
     }, []);
 
-    const filtered = invoices.filter(i =>
-        i.id.toLowerCase().includes(query.toLowerCase()) ||
-        (i.borrower ?? "").toLowerCase().includes(query.toLowerCase())
-    );
+    useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
+
+    const filtered = invoices.filter(inv => {
+        const matchStatus = filter === "ALL" || inv.status === filter;
+        const matchQuery  =
+            query === "" ||
+            inv.invoiceId.toLowerCase().includes(query.toLowerCase()) ||
+            (inv.uploadedBy?.organization ?? "").toLowerCase().includes(query.toLowerCase()) ||
+            (inv.description ?? "").toLowerCase().includes(query.toLowerCase());
+        return matchStatus && matchQuery;
+    });
+
+    const copyHash = (hash: string, id: string) => {
+        navigator.clipboard.writeText(hash);
+        setCopiedId(id);
+        toast.success("Hash copied");
+        setTimeout(() => setCopiedId(null), 2000);
+    };
 
     return (
-        <div className="space-y-8">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-                <p className="mg-label mb-1.5">Lender Console</p>
-                <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
-                    All <span className="mg-accent-text">Loans</span>
-                </h1>
-                <p className="text-sm text-mg-muted mt-1">Complete history of financed invoices</p>
+        <div className="space-y-6">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+                <div>
+                    <p className="mg-label mb-1.5">Lender Console</p>
+                    <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
+                        Invoice <span className="mg-accent-text">Ledger</span>
+                    </h1>
+                    <p className="text-sm text-mg-muted mt-1">
+                        {loading ? "Loading…" : `${total} invoice${total !== 1 ? "s" : ""} on ledger`}
+                    </p>
+                </div>
+                <button onClick={fetchInvoices} disabled={loading}
+                    className="mg-btn-ghost border border-mg-lavender/20 px-3 py-2 rounded-xl text-mg-muted hover:text-mg-silver transition-colors flex items-center gap-1.5 text-sm disabled:opacity-40">
+                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+                    Refresh
+                </button>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mg-card rounded-2xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-mg-lavender/10 flex items-center justify-between gap-4 flex-wrap">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(74,78,143,0.09)", border: "1px solid rgba(74,78,143,0.20)" }}>
-                            <BookOpen className="w-4 h-4 text-mg-lavender" />
-                        </div>
-                        <p className="font-semibold text-mg-silver text-sm">{filtered.length} loans</p>
-                    </div>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-mg-dim" />
-                        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search by ID or company…" className="mg-input pl-8 text-sm w-56" />
-                    </div>
+            {/* Search & filter */}
+            <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" />
+                    <input value={query} onChange={e => setQuery(e.target.value)}
+                        placeholder="Search by invoice ID, company or description…" className="mg-input pl-9" />
                 </div>
+                <div className="flex gap-2 flex-wrap">
+                    {STATUS_FILTERS.map(f => (
+                        <button key={f.value} onClick={() => setFilter(f.value)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                                filter === f.value
+                                    ? "bg-mg-cosmic text-white border-mg-cosmic"
+                                    : "bg-mg-card text-mg-muted border-mg-lavender/15 hover:border-mg-lavender/30"
+                            }`}>
+                            {f.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
+            {/* Error */}
+            {error && (
+                <div className="flex items-center gap-2 p-4 rounded-xl text-sm text-status-danger"
+                    style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.18)" }}>
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{error}</span>
+                    <button onClick={fetchInvoices} className="ml-auto text-xs underline">Retry</button>
+                </div>
+            )}
+
+            {/* Table */}
+            <div className="mg-card rounded-2xl overflow-hidden">
                 <div className="overflow-x-auto">
-                    {loading ? (
-                        <div className="py-16 text-center text-mg-dim text-sm italic">Loading…</div>
-                    ) : filtered.length === 0 ? (
-                        <div className="py-16 text-center">
-                            <BookOpen className="w-10 h-10 text-mg-dim mx-auto mb-3" />
-                            <p className="text-sm text-mg-dim italic">No financed loans found</p>
-                        </div>
-                    ) : (
-                        <table className="w-full mg-table">
-                            <thead>
-                                <tr>
-                                    <th>Invoice ID</th><th>Company</th><th>Amount</th><th>Date</th><th>Lender</th><th>Status</th><th>TX</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filtered.map(inv => (
-                                    <tr key={inv.id} className="hover:bg-mg-elevated/50 transition-colors">
-                                        <td>
-                                            <Link href={`/lender/loan/${inv.id}`} className="font-mono font-semibold text-mg-cosmic hover:text-mg-lavender transition-colors">
-                                                {inv.id}
-                                            </Link>
-                                        </td>
-                                        <td>{inv.borrower}</td>
-                                        <td><span className="font-bold text-status-success">{formatCurrency(inv.amount)}</span></td>
-                                        <td>{formatDate(inv.timestamp)}</td>
-                                        <td>{inv.lender ?? "—"}</td>
-                                        <td><StatusBadge status={inv.status} /></td>
-                                        <td>
-                                            {inv.ledgerTx ? (
-                                                <a href={`https://polygonscan.com/tx/${inv.ledgerTx}`} target="_blank" rel="noreferrer"
-                                                    className="flex items-center gap-1 text-xs text-mg-cosmic hover:text-mg-lavender">
-                                                    View <ExternalLink className="w-3 h-3" />
-                                                </a>
-                                            ) : <span className="text-xs text-mg-dim">—</span>}
-                                        </td>
-                                    </tr>
+                    <table className="w-full mg-table">
+                        <thead>
+                            <tr>
+                                {["Invoice ID", "Company", "Amount", "Date", "Hash", "Status", "Actions"].map(h => (
+                                    <th key={h} className="text-left">{h}</th>
                                 ))}
-                            </tbody>
-                        </table>
-                    )}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr><td colSpan={7} className="py-16 text-center">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <div className="w-7 h-7 rounded-full border-2 border-mg-dim border-t-mg-lavender animate-spin" />
+                                        <span className="text-xs text-mg-dim animate-pulse">Fetching ledger…</span>
+                                    </div>
+                                </td></tr>
+                            ) : filtered.length === 0 ? (
+                                <tr><td colSpan={7} className="py-16 text-center">
+                                    <div className="flex flex-col items-center gap-3 text-mg-dim">
+                                        <BookOpen className="w-8 h-8 opacity-40" />
+                                        <span className="text-sm italic">
+                                            {invoices.length === 0 ? "No invoices on ledger yet" : "No invoices match your search"}
+                                        </span>
+                                    </div>
+                                </td></tr>
+                            ) : filtered.map((inv, i) => (
+                                <motion.tr key={inv._id}
+                                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}>
+                                    <td>
+                                        <p className="font-medium text-mg-silver text-sm">{inv.invoiceId}</p>
+                                        <p className="text-[10px] text-mg-dim mt-0.5">{inv.originalFileName ?? "—"}</p>
+                                    </td>
+                                    <td>
+                                        <p className="text-mg-silver text-sm">{inv.uploadedBy?.organization ?? "—"}</p>
+                                        <p className="text-[10px] text-mg-dim">{inv.uploadedBy?.name}</p>
+                                    </td>
+                                    <td className="font-semibold text-mg-silver whitespace-nowrap">
+                                        {formatCurrency(inv.amount)}&nbsp;
+                                        <span className="text-[10px] font-normal text-mg-dim">{inv.currency}</span>
+                                    </td>
+                                    <td className="text-mg-muted text-sm whitespace-nowrap">{formatDate(inv.createdAt)}</td>
+                                    <td>
+                                        <button onClick={() => copyHash(inv.invoiceHash, inv._id)}
+                                            title={inv.invoiceHash}
+                                            className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-mg-elevated transition-colors group">
+                                            <span className="font-mono text-[10px] text-mg-dim group-hover:text-mg-muted">
+                                                {inv.invoiceHash.slice(0, 8)}…{inv.invoiceHash.slice(-4)}
+                                            </span>
+                                            {copiedId === inv._id
+                                                ? <Check className="w-3 h-3 text-status-success shrink-0" />
+                                                : <Copy className="w-3 h-3 text-mg-dim group-hover:text-mg-lavender shrink-0" />}
+                                        </button>
+                                    </td>
+                                    <td><StatusBadge status={inv.status} /></td>
+                                    <td>
+                                        <div className="flex items-center gap-2">
+                                            <Link
+                                                href={`/lender/verify-hash?hash=${encodeURIComponent(inv.invoiceHash)}`}
+                                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+                                                style={{ background: "rgba(74,78,143,0.10)", border: "1px solid rgba(74,78,143,0.22)", color: "#8b8fc8" }}>
+                                                <ShieldCheck className="w-3 h-3" /> Verify
+                                            </Link>
+                                            {inv.ipfsCID && (
+                                                <a href={`https://ipfs.io/ipfs/${inv.ipfsCID}`} target="_blank" rel="noopener noreferrer"
+                                                    className="p-1.5 rounded-md hover:bg-mg-elevated text-mg-dim hover:text-mg-lavender transition-colors inline-flex">
+                                                    <ExternalLink className="w-3.5 h-3.5" />
+                                                </a>
+                                            )}
+                                        </div>
+                                    </td>
+                                </motion.tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
-            </motion.div>
+
+                {!loading && filtered.length > 0 && (
+                    <div className="px-5 py-3 border-t border-mg-lavender/08 text-xs text-mg-dim text-right">
+                        Showing {filtered.length} of {total}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

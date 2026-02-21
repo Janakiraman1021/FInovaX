@@ -5,15 +5,55 @@ const { createAuditLog } = require('../services/audit.service');
 const { sendResponse } = require('../utils/response');
 
 /**
+ * GET /lender/invoices
+ * List all invoices — lender can filter by status.
+ */
+const getAllInvoices = async (req, res, next) => {
+    try {
+        const { page = 1, limit = 50, status } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const filter = {};
+        if (status) filter.status = status.toUpperCase();
+
+        const [invoices, total] = await Promise.all([
+            Invoice.find(filter)
+                .populate('uploadedBy', 'name email organization')
+                .populate('financedBy', 'name email organization')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit)),
+            Invoice.countDocuments(filter),
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                invoices,
+                pagination: {
+                    total,
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    totalPages: Math.ceil(total / parseInt(limit)),
+                },
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
  * GET /api/lender/verify/:invoiceId
  * Verify invoice status — check both DB and blockchain.
  */
-const verifyInvoice = async (req, res, next) => {
+const verifyInvoice = async (req, res) => {
     try {
-        const { invoiceId } = req.params;
+        const { hash } = req.params;
 
-        // Find by invoiceId or invoiceHash (since it could be either)
+        // Search by either invoiceHash (SHA-256) or ipfsHash (IPFS CID)
         const invoice = await Invoice.findOne({
+<<<<<<< HEAD
             $or: [{ invoiceId }, { invoiceHash: invoiceId }]
         });
 
@@ -27,6 +67,16 @@ const verifyInvoice = async (req, res, next) => {
                     }
                 }
             });
+=======
+            $or: [
+                { invoiceHash: hash },
+                { ipfsHash: hash }
+            ]
+        });
+
+        if (!invoice) {
+            throw new Error("Invoice not found in database");
+>>>>>>> fd51e07e76cb493c946db651dd9ec9b2ed378cca
         }
 
         // Check if receivable obligation is already financed by ANY document
@@ -231,4 +281,4 @@ const financeInvoice = async (req, res, next) => {
     }
 };
 
-module.exports = { verifyInvoice, financeInvoice };
+module.exports = { getAllInvoices, verifyInvoice, financeInvoice };

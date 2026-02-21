@@ -9,12 +9,13 @@ interface AuthContextType {
     user: AuthUser | null;
     role: UserRole | null;
     isAuthenticated: boolean;
-    /** Demo / backwards-compat login — sets a role without calling the backend */
+    /** true while the session is being restored from localStorage on mount */
+    isHydrating: boolean;
     login: (role: UserRole) => void;
-    /** Real login — calls POST /auth/login, throws on failure */
     loginWithCredentials: (email: string, password: string) => Promise<void>;
-    /** Real registration — calls POST /auth/register, throws on failure */
     registerUser: (payload: RegisterPayload) => Promise<void>;
+    /** Update name/organization — calls PATCH /auth/me */
+    updateProfile: (updates: { name?: string; organization?: string }) => Promise<void>;
     logout: () => void;
     switchRole: (role: UserRole) => void;
     isDemoMode: boolean;
@@ -30,6 +31,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser]             = useState<AuthUser | null>(null);
     const [role, setRole]             = useState<UserRole | null>(null);
     const [isDemoMode, setIsDemoMode] = useState(true);
+    const [isHydrating, setIsHydrating] = useState(true);
     const router = useRouter();
 
     // Restore session on mount — try real token first, fall back to saved role
@@ -42,13 +44,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     setRole(res.data.role as UserRole);
                 })
                 .catch(() => {
-                    localStorage.removeItem(TOKEN_KEY);
+                    // Token expired / invalid — keep role from cookie for middleware
+                    // but don't remove it so the user can re-auth gracefully
                     const savedRole = localStorage.getItem(ROLE_KEY) as UserRole;
                     if (savedRole) setRole(savedRole);
-                });
+                })
+                .finally(() => setIsHydrating(false));
         } else {
             const savedRole = localStorage.getItem(ROLE_KEY) as UserRole;
             if (savedRole) setRole(savedRole);
+            setIsHydrating(false);
         }
     }, []);
 
@@ -73,6 +78,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(res.data.user, res.data.token);
         router.push(`/${res.data.user.role}/dashboard`);
     }, [setSession, router]);
+
+    // ── Update profile ────────────────────────────────────────────────────────
+    const updateProfile = useCallback(async (updates: { name?: string; organization?: string }) => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token || token.startsWith("mock.")) {
+            // demo mode — update local state only, no API call
+            setUser(prev => prev ? { ...prev, ...updates } : prev);
+            return;
+        }
+        const res = await authAPI.updateProfile(token, updates);
+        setUser(res.data);
+    }, []);
 
     // ── Demo / legacy login (no API call) ─────────────────────────────────────
     const login = useCallback((newRole: UserRole) => {
@@ -111,9 +128,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             user,
             role,
             isAuthenticated: !!role,
+            isHydrating,
             login,
             loginWithCredentials,
             registerUser,
+            updateProfile,
             logout,
             switchRole,
             isDemoMode,

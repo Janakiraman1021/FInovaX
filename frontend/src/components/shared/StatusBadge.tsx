@@ -1,21 +1,28 @@
 "use client";
 
-import { InvoiceStatus } from "@/lib/mock/mockInvoices";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
+// All possible statuses (real backend + legacy mock)
+export type InvoiceStatus =
+    | "UPLOADED" | "FINANCED" | "BLOCKED"
+    | "PENDING"  | "VERIFIED" | "FRAUD_ALERT";
+
 interface StatusBadgeProps {
-    status: InvoiceStatus;
+    status: string;
     className?: string;
 }
 
-const statusConfig: Record<InvoiceStatus, {
-    label: string;
-    bg: string;
-    border: string;
-    text: string;
-    dot: string;
-}> = {
+type StatusCfg = { label: string; bg: string; border: string; text: string; dot: string };
+
+const statusConfig: Record<string, StatusCfg> = {
+    UPLOADED: {
+        label:  "Uploaded",
+        bg:     "rgba(74,78,143,0.10)",
+        border: "rgba(74,78,143,0.25)",
+        text:   "#4a4e8f",
+        dot:    "#4a4e8f",
+    },
     PENDING: {
         label:  "Pending",
         bg:     "rgba(74,78,143,0.10)",
@@ -37,6 +44,13 @@ const statusConfig: Record<InvoiceStatus, {
         text:   "#059669",
         dot:    "#059669",
     },
+    BLOCKED: {
+        label:  "Blocked",
+        bg:     "rgba(220,38,38,0.10)",
+        border: "rgba(220,38,38,0.30)",
+        text:   "#dc2626",
+        dot:    "#dc2626",
+    },
     FRAUD_ALERT: {
         label:  "Fraud Alert",
         bg:     "rgba(220,38,38,0.10)",
@@ -46,19 +60,27 @@ const statusConfig: Record<InvoiceStatus, {
     },
 };
 
+const DEFAULT_CFG: StatusCfg = {
+    label:  "Unknown",
+    bg:     "rgba(120,120,120,0.10)",
+    border: "rgba(120,120,120,0.25)",
+    text:   "#888",
+    dot:    "#888",
+};
+
 export const StatusBadge = ({ status, className }: StatusBadgeProps) => {
-    const cfg = statusConfig[status];
+    const cfg = statusConfig[status] ?? DEFAULT_CFG;
     return (
         <motion.div
             animate={
-                status === "PENDING"
+                status === "PENDING" || status === "UPLOADED"
                     ? { opacity: [0.7, 1, 0.7] }
-                    : status === "FRAUD_ALERT"
+                    : status === "FRAUD_ALERT" || status === "BLOCKED"
                     ? { scale: [1, 1.05, 1] }
                     : { opacity: 1 }
             }
             transition={
-                status === "PENDING" || status === "FRAUD_ALERT"
+                status === "PENDING" || status === "UPLOADED" || status === "FRAUD_ALERT" || status === "BLOCKED"
                     ? { duration: 1.8, repeat: Infinity, ease: "easeInOut" }
                     : {}
             }

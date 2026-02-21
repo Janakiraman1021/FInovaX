@@ -1,67 +1,136 @@
-"use client";
+﻿"use client";
 
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
-import { User, Mail, Building2, Shield, Key, Bell, LogOut, Save, CheckCircle } from "lucide-react";
-import { useState } from "react";
+import {
+    User, Mail, Building2, Shield, Key, Bell,
+    LogOut, Save, CheckCircle, Loader2, AlertCircle, Calendar,
+} from "lucide-react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-const roleDetails: Record<string, { label: string; org: string; email: string; bg: string }> = {
-    msme:    { label: "MSME Owner",    org: "TechFlow Pvt. Ltd.",       email: "arjun.msme@techflow.in",   bg: "#4a4e8f" },
-    lender:  { label: "Loan Officer",  org: "Global Finance Bank",      email: "sarah.lender@globalfin.in", bg: "#059669" },
-    auditor: { label: "Regulator",     org: "RBI Compliance Division",  email: "priya.audit@rbi.in",        bg: "#6d28d9" },
+const roleConfig: Record<string, { label: string; color: string }> = {
+    msme:    { label: "MSME Owner",   color: "#4a4e8f" },
+    lender:  { label: "Loan Officer", color: "#059669" },
+    auditor: { label: "Regulator",    color: "#6d28d9" },
 };
 
 export default function ProfilePage() {
-    const { role, logout } = useAuth();
-    const info = role ? roleDetails[role] ?? roleDetails.msme : roleDetails.msme;
-    const [name, setName]        = useState(role === "msme" ? "Arjun Mehta" : role === "lender" ? "Sarah Smith" : "Priya Sharma");
-    const [org, setOrg]          = useState(info.org);
-    const [notifs, setNotifs]    = useState(true);
-    const [saved, setSaved]      = useState(false);
+    const { user, role, logout, updateProfile } = useAuth();
+    const config = role ? (roleConfig[role] ?? roleConfig.msme) : roleConfig.msme;
 
-    const handleSave = () => {
-        setSaved(true);
-        toast.success("Profile updated", { description: "Changes have been saved." });
-        setTimeout(() => setSaved(false), 2500);
+    const [name, setName]           = useState("");
+    const [org, setOrg]             = useState("");
+    const [notifs, setNotifs]       = useState(true);
+    const [saving, setSaving]       = useState(false);
+    const [saved, setSaved]         = useState(false);
+    const [saveError, setSaveError] = useState("");
+
+    // Populate fields once backend user resolves
+    useEffect(() => {
+        if (user) {
+            setName(user.name ?? "");
+            setOrg(user.organization ?? "");
+        }
+    }, [user]);
+
+    const handleSave = async () => {
+        if (!name.trim()) { setSaveError("Name cannot be empty."); return; }
+        setSaving(true);
+        setSaveError("");
+        try {
+            await updateProfile({ name: name.trim(), organization: org.trim() });
+            setSaved(true);
+            toast.success("Profile updated", { description: "Your changes have been saved." });
+            setTimeout(() => setSaved(false), 2500);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Failed to save.";
+            setSaveError(msg);
+            toast.error("Update failed", { description: msg });
+        } finally {
+            setSaving(false);
+        }
     };
+
+    // Loading skeleton while user hasn't arrived from /auth/me yet
+    if (!user) {
+        return (
+            <div className="space-y-8 max-w-2xl">
+                <div className="mg-card rounded-2xl p-6 flex items-center gap-5 animate-pulse">
+                    <div className="w-16 h-16 rounded-2xl bg-mg-surface shrink-0" />
+                    <div className="flex-1 space-y-2.5">
+                        <div className="h-4 w-44 bg-mg-surface rounded" />
+                        <div className="h-3 w-60 bg-mg-surface rounded" />
+                        <div className="h-5 w-24 bg-mg-surface rounded-full" />
+                    </div>
+                </div>
+                <div className="mg-card rounded-2xl p-6 space-y-4 animate-pulse">
+                    {[1, 2, 3].map(i => <div key={i} className="h-11 bg-mg-surface rounded-xl" />)}
+                </div>
+            </div>
+        );
+    }
+
+    const initials = name
+        ? name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
+        : "?";
+
+    const joinedDate = user.createdAt
+        ? new Date(user.createdAt).toLocaleDateString("en-IN", {
+              year: "numeric", month: "long", day: "numeric",
+          })
+        : null;
 
     return (
         <div className="space-y-8 max-w-2xl">
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
                 <p className="mg-label mb-1.5">{role?.toUpperCase()} Portal</p>
-                <h1 className="text-3xl font-bold text-mg-silver tracking-tight">My <span className="mg-accent-text">Profile</span></h1>
+                <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
+                    My <span className="mg-accent-text">Profile</span>
+                </h1>
                 <p className="text-sm text-mg-muted mt-1">Manage your account details and preferences</p>
             </motion.div>
 
-            {/* Avatar card */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="mg-card rounded-2xl p-6 flex items-center gap-5">
+            {/* ── Avatar card ── */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+                className="mg-card rounded-2xl p-6 flex items-center gap-5">
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shrink-0"
-                    style={{ background: `linear-gradient(135deg, ${info.bg}, ${info.bg}aa)` }}>
-                    {name[0]}
+                    style={{ background: `linear-gradient(135deg, ${config.color}, ${config.color}aa)` }}>
+                    {initials}
                 </div>
-                <div>
-                    <p className="font-bold text-mg-silver text-lg">{name}</p>
-                    <p className="text-sm text-mg-muted">{info.email}</p>
-                    <span className={cn("mt-1 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full",
-                        role === "msme" ? "bg-mg-cosmic/10 text-mg-cosmic border border-mg-cosmic/20" :
-                        role === "lender" ? "bg-status-success/10 text-status-success border border-status-success/20" :
-                        "bg-violet-500/10 text-violet-700 border border-violet-400/20")}>
-                        <Shield className="w-3 h-3" /> {info.label}
-                    </span>
+                <div className="flex-1 min-w-0">
+                    <p className="font-bold text-mg-silver text-lg truncate">{user.name}</p>
+                    <p className="text-sm text-mg-muted truncate">{user.email}</p>
+                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                        <span className={cn(
+                            "inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full",
+                            role === "msme"    ? "bg-mg-cosmic/10 text-mg-cosmic border border-mg-cosmic/20" :
+                            role === "lender"  ? "bg-status-success/10 text-status-success border border-status-success/20" :
+                                                 "bg-violet-500/10 text-violet-700 border border-violet-400/20"
+                        )}>
+                            <Shield className="w-3 h-3" />{config.label}
+                        </span>
+                        {joinedDate && (
+                            <span className="inline-flex items-center gap-1 text-xs text-mg-dim">
+                                <Calendar className="w-3 h-3" />Joined {joinedDate}
+                            </span>
+                        )}
+                    </div>
                 </div>
             </motion.div>
 
-            {/* Edit form */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} className="mg-card rounded-2xl p-6 space-y-5">
+            {/* ── Edit form ── */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
+                className="mg-card rounded-2xl p-6 space-y-5">
                 <p className="mg-label mb-1">Personal Information</p>
 
                 <div>
                     <label className="mg-label block mb-1.5">Full Name</label>
                     <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" />
-                        <input value={name} onChange={e => setName(e.target.value)} className="mg-input pl-9" />
+                        <input value={name} onChange={e => { setName(e.target.value); setSaveError(""); }}
+                            placeholder="Your full name" className="mg-input pl-9" />
                     </div>
                 </div>
 
@@ -69,7 +138,8 @@ export default function ProfilePage() {
                     <label className="mg-label block mb-1.5">Email Address</label>
                     <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" />
-                        <input defaultValue={info.email} disabled className="mg-input pl-9 opacity-60 cursor-not-allowed" />
+                        <input value={user.email} readOnly
+                            className="mg-input pl-9 opacity-60 cursor-not-allowed select-none" />
                     </div>
                     <p className="text-xs text-mg-dim mt-1">Email cannot be changed. Contact support to update.</p>
                 </div>
@@ -78,7 +148,8 @@ export default function ProfilePage() {
                     <label className="mg-label block mb-1.5">Organisation</label>
                     <div className="relative">
                         <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" />
-                        <input value={org} onChange={e => setOrg(e.target.value)} className="mg-input pl-9" />
+                        <input value={org} onChange={e => setOrg(e.target.value)}
+                            placeholder="Your organisation" className="mg-input pl-9" />
                     </div>
                 </div>
 
@@ -91,26 +162,38 @@ export default function ProfilePage() {
                         </div>
                     </div>
                     <button onClick={() => setNotifs(!notifs)}
-                        className={cn("relative w-11 h-6 rounded-full transition-colors", notifs ? "bg-mg-cosmic" : "bg-mg-surface border border-mg-lavender/20")}>
+                        className={cn("relative w-11 h-6 rounded-full transition-colors",
+                            notifs ? "bg-mg-cosmic" : "bg-mg-surface border border-mg-lavender/20")}>
                         <span className={cn("absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
                             notifs ? "translate-x-5.5 left-0" : "left-0.5")} />
                     </button>
                 </div>
 
-                <button onClick={handleSave} className="mg-btn-primary w-full justify-center gap-2">
-                    {saved ? <><CheckCircle className="w-4 h-4" /> Saved!</> : <><Save className="w-4 h-4" /> Save Changes</>}
+                {saveError && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl text-sm text-status-danger"
+                        style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.18)" }}>
+                        <AlertCircle className="w-4 h-4 shrink-0" />{saveError}
+                    </div>
+                )}
+
+                <button onClick={handleSave} disabled={saving}
+                    className={cn("mg-btn-primary w-full justify-center gap-2", saving && "opacity-70 cursor-not-allowed")}>
+                    {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Saving&hellip;</> :
+                     saved  ? <><CheckCircle className="w-4 h-4" />Saved!</> :
+                              <><Save className="w-4 h-4" />Save Changes</>}
                 </button>
             </motion.div>
 
-            {/* Security section */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.20 }} className="mg-card rounded-2xl p-6 space-y-4">
+            {/* ── Security ── */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.20 }}
+                className="mg-card rounded-2xl p-6 space-y-4">
                 <p className="mg-label mb-1">Security</p>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Key className="w-4 h-4 text-mg-dim" />
                         <div>
                             <p className="text-sm font-medium text-mg-silver">Password</p>
-                            <p className="text-xs text-mg-muted">Last changed 30 days ago</p>
+                            <p className="text-xs text-mg-muted">Change your account password</p>
                         </div>
                     </div>
                     <button onClick={() => toast.info("Password reset link sent to your email.")}
@@ -119,7 +202,8 @@ export default function ProfilePage() {
                     </button>
                 </div>
                 <div className="mg-divider" />
-                <button onClick={logout} className="flex items-center gap-3 w-full text-left p-3 rounded-xl hover:bg-status-danger/5 border border-transparent hover:border-status-danger/15 transition-all group">
+                <button onClick={logout}
+                    className="flex items-center gap-3 w-full text-left p-3 rounded-xl hover:bg-status-danger/5 border border-transparent hover:border-status-danger/15 transition-all group">
                     <LogOut className="w-4 h-4 text-mg-dim group-hover:text-status-danger" />
                     <div>
                         <p className="text-sm font-medium text-mg-silver group-hover:text-status-danger transition-colors">Sign out</p>

@@ -118,4 +118,43 @@ const getMe = async (req, res, next) => {
     }
 };
 
-module.exports = { register, login, getMe };
+/**
+ * PATCH /api/auth/me
+ * Update current user's name and/or organization.
+ */
+const updateMe = async (req, res, next) => {
+    try {
+        const allowedFields = ['name', 'organization'];
+        const updates = {};
+        allowedFields.forEach(field => {
+            if (req.body[field] !== undefined) updates[field] = req.body[field];
+        });
+
+        if (Object.keys(updates).length === 0) {
+            return next(new AppError('No valid fields provided for update', 400));
+        }
+
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            updates,
+            { new: true, runValidators: true }
+        );
+
+        res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                organization: user.organization,
+                createdAt: user.createdAt,
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { register, login, getMe, updateMe };
