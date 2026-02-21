@@ -1,37 +1,56 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { Invoice } from "@/lib/mock/mockInvoices";
+import { useEffect, useState, useCallback } from "react";
+import { lenderAPI, LenderInvoice } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { formatCurrency, formatDate, generateTxHash } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { Banknote, CheckCircle, ArrowRight, Coins, FileCheck } from "lucide-react";
+import { Banknote, CheckCircle, ArrowRight, Coins, FileCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Step = "select" | "confirm" | "success";
 
 export default function LenderDisbursement() {
-    const [invoices, setInvoices]   = useState<Invoice[]>([]);
-    const [selected, setSelected]   = useState<Invoice | null>(null);
+    const [invoices, setInvoices]   = useState<LenderInvoice[]>([]);
+    const [selected, setSelected]   = useState<LenderInvoice | null>(null);
     const [step, setStep]           = useState<Step>("select");
     const [txHash, setTxHash]       = useState("");
     const [loading, setLoading]     = useState(false);
+    const [fetching, setFetching]   = useState(true);
 
-    useEffect(() => {
-        api.invoices.getAll().then((data: Invoice[]) => setInvoices(data.filter(i => i.status === "VERIFIED")));
+    const fetchInvoices = useCallback(async () => {
+        const token = localStorage.getItem("finovax-token") ?? "";
+        if (!token || token.startsWith("mock.")) { setFetching(false); return; }
+        setFetching(true);
+        try {
+            const res = await lenderAPI.getAllInvoices(token, { status: "UPLOADED", limit: 100 });
+            setInvoices(res.data.invoices);
+        } catch (err: unknown) {
+            toast.error("Failed to load invoices", { description: err instanceof Error ? err.message : "Unknown error" });
+        } finally {
+            setFetching(false);
+        }
     }, []);
+
+    useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
 
     const handleConfirm = async () => {
         if (!selected) return;
+        const token = localStorage.getItem("finovax-token") ?? "";
+        if (!token || token.startsWith("mock.")) { toast.error("Real lender account required."); return; }
         setLoading(true);
-        const tx = generateTxHash();
-        await api.invoices.disburse(selected.id, "Sarah Smith (Lender)", tx);
-        setTxHash(tx);
-        setInvoices(prev => prev.filter(i => i.id !== selected.id));
-        setLoading(false);
-        setStep("success");
-        toast.success("Disbursement complete");
+        try {
+            const res = await lenderAPI.financeInvoice(token, selected.invoiceId);
+            const tx  = res.data.invoice.financeTxHash ?? "";
+            setTxHash(tx);
+            setInvoices(prev => prev.filter(i => i._id !== selected._id));
+            setStep("success");
+            toast.success("Disbursement complete");
+        } catch (err: unknown) {
+            toast.error("Disbursement failed", { description: err instanceof Error ? err.message : "Unknown error" });
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -66,18 +85,20 @@ export default function LenderDisbursement() {
                             <p className="font-semibold text-mg-silver text-sm">Select Invoice to Disburse</p>
                         </div>
                         <div className="p-4 space-y-3 max-h-[380px] overflow-y-auto">
-                            {invoices.length === 0 ? (
+                            {fetching ? (
+                                <div className="py-16 text-center"><Loader2 className="w-8 h-8 text-mg-dim mx-auto mb-3 animate-spin" /><p className="text-sm text-mg-dim italic">Loading…</p></div>
+                            ) : invoices.length === 0 ? (
                                 <div className="py-16 text-center"><Coins className="w-10 h-10 text-mg-dim mx-auto mb-3" /><p className="text-sm text-mg-dim italic">No eligible invoices</p></div>
                             ) : invoices.map(inv => (
-                                <button key={inv.id} onClick={() => { setSelected(inv); setStep("confirm"); }}
-                                    className={`w-full text-left p-4 rounded-xl border transition-all ${selected?.id === inv.id ? "border-mg-cosmic bg-mg-cosmic/5" : "border-mg-lavender/10 bg-mg-elevated hover:border-mg-lavender/25"}`}>
+                                <button key={inv._id} onClick={() => { setSelected(inv); setStep("confirm"); }}
+                                    className={`w-full text-left p-4 rounded-xl border transition-all ${selected?._id === inv._id ? "border-mg-cosmic bg-mg-cosmic/5" : "border-mg-lavender/10 bg-mg-elevated hover:border-mg-lavender/25"}`}>
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className="font-mono font-semibold text-mg-silver text-sm">{inv.id}</span>
+                                                <span className="font-mono font-semibold text-mg-silver text-sm">{inv.invoiceId}</span>
                                                 <StatusBadge status={inv.status} />
                                             </div>
-                                            <p className="text-xs text-mg-muted">{inv.borrower} · {formatDate(inv.timestamp)}</p>
+                                            <p className="text-xs text-mg-muted">{inv.uploadedBy?.organization ?? inv.uploadedBy?.name} · {formatDate(inv.createdAt)}</p>
                                         </div>
                                         <p className="text-lg font-bold text-status-success">{formatCurrency(inv.amount)}</p>
                                     </div>
@@ -92,7 +113,7 @@ export default function LenderDisbursement() {
                         className="mg-card rounded-2xl p-6 space-y-5">
                         <p className="mg-label mb-1">Confirm Disbursement</p>
                         <div className="bg-mg-elevated rounded-xl border border-mg-lavender/10 p-4 space-y-3">
-                            {[["Invoice ID", selected.id, true], ["Borrower", selected.borrower ?? "—", false], ["Amount", formatCurrency(selected.amount), false], ["Date", formatDate(selected.timestamp), false]].map(([k, v, mono]) => (
+                            {[["Invoice ID", selected.invoiceId, true], ["Company", selected.uploadedBy?.organization ?? selected.uploadedBy?.name ?? "—", false], ["Amount", `${formatCurrency(selected.amount)} ${selected.currency}`, false], ["Date", formatDate(selected.createdAt), false]].map(([k, v, mono]) => (
                                 <div key={String(k)} className="flex justify-between items-center">
                                     <span className="text-xs text-mg-muted">{k}</span>
                                     <span className={`text-sm font-semibold text-mg-silver ${mono ? "font-mono" : ""}`}>{v}</span>
@@ -119,10 +140,12 @@ export default function LenderDisbursement() {
                             <p className="text-[10px] text-mg-dim mb-1">TRANSACTION HASH</p>
                             <p className="font-mono text-xs text-mg-silver break-all">{txHash}</p>
                         </div>
-                        <a href={`https://polygonscan.com/tx/${txHash}`} target="_blank" rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-sm text-mg-cosmic hover:text-mg-lavender transition-colors">
-                            View on Polygonscan →
-                        </a>
+                        {txHash && (
+                            <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 text-sm text-mg-cosmic hover:text-mg-lavender transition-colors">
+                                View on Etherscan →
+                            </a>
+                        )}
                         <div className="pt-2">
                             <button onClick={() => { setStep("select"); setSelected(null); setTxHash(""); }} className="mg-btn-primary gap-2">
                                 <Banknote className="w-4 h-4" />New Disbursement

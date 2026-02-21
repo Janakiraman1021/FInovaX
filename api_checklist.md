@@ -78,7 +78,7 @@ This document is a comprehensive guide to every endpoint available in the FinTru
   - **Body (form-data)**:
     | Key | Value |
     | :--- | :--- |
-    | [file](file:///d:/finovax/backend/src/controllers/invoice.controller.js#15-23) | `invoice_sample.pdf` |
+    | [file](file:///E:/finovax/backend/src/controllers/invoice.controller.js#15-23) | `invoice_sample.pdf` |
     | `amount` | `75000` |
     | `sellerGSTIN` | `27AAAAA0000A1Z5` |
     | `buyerGSTIN` | `27BBBBB0000B1Z5` |

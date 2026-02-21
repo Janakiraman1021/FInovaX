@@ -3,12 +3,14 @@
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
 import {
-    User, Mail, Building2, Shield, Key, Bell,
+    Shield, Key, Bell,
     LogOut, Save, CheckCircle, Loader2, AlertCircle, Calendar,
+    Phone, MapPin, Briefcase, User, Mail,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { msmeProfileAPI, MSMEProfile, MSMEProfilePayload } from "@/lib/api";
 
 const roleConfig: Record<string, { label: string; color: string }> = {
     msme:    { label: "MSME Owner",   color: "#4a4e8f" },
@@ -27,13 +29,47 @@ export default function ProfilePage() {
     const [saved, setSaved]         = useState(false);
     const [saveError, setSaveError] = useState("");
 
-    // Populate fields once backend user resolves
+    // ── MSME Business Profile state ───────────────────────────────────────────
+    const [msmeProfile,   setMsmeProfile]   = useState<MSMEProfile | null>(null);
+    const [companyName,   setCompanyName]   = useState("");
+    const [contactPerson, setContactPerson] = useState("");
+    const [bizEmail,      setBizEmail]      = useState("");
+    const [phone,         setPhone]         = useState("");
+    const [address,       setAddress]       = useState("");
+    const [loadingBiz,    setLoadingBiz]    = useState(false);
+    const [savingBiz,     setSavingBiz]     = useState(false);
+    const [savedBiz,      setSavedBiz]      = useState(false);
+    const [bizError,      setBizError]      = useState("");
+
+    // Populate personal fields once backend user resolves
     useEffect(() => {
         if (user) {
             setName(user.name ?? "");
             setOrg(user.organization ?? "");
         }
     }, [user]);
+
+    // Load MSME profile (msme role only)
+    useEffect(() => {
+        if (role !== "msme") return;
+        const token = localStorage.getItem("finovax-token");
+        if (!token || token.startsWith("mock.")) return;
+        setLoadingBiz(true);
+        msmeProfileAPI.getProfile(token)
+            .then(res => {
+                const p = res.data;
+                setMsmeProfile(p);
+                setCompanyName(p.companyName ?? "");
+                setContactPerson(p.contactPerson ?? "");
+                setBizEmail(p.email ?? "");
+                setPhone(p.phone ?? "");
+                setAddress(p.address ?? "");
+            })
+            .catch(() => {
+                // 404 — profile not created yet; that's fine
+            })
+            .finally(() => setLoadingBiz(false));
+    }, [role]);
 
     const handleSave = async () => {
         if (!name.trim()) { setSaveError("Name cannot be empty."); return; }
@@ -50,6 +86,37 @@ export default function ProfilePage() {
             toast.error("Update failed", { description: msg });
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleSaveBiz = async () => {
+        if (!companyName.trim()) { setBizError("Company name is required."); return; }
+        const token = localStorage.getItem("finovax-token");
+        if (!token || token.startsWith("mock.")) {
+            toast.info("Business profile is disabled in demo mode.");
+            return;
+        }
+        setSavingBiz(true);
+        setBizError("");
+        try {
+            const payload: MSMEProfilePayload = {
+                companyName:   companyName.trim(),
+                contactPerson: contactPerson.trim() || undefined,
+                email:         bizEmail.trim()      || undefined,
+                phone:         phone.trim()          || undefined,
+                address:       address.trim()        || undefined,
+            };
+            const res = await msmeProfileAPI.createOrUpdate(token, payload);
+            setMsmeProfile(res.data);
+            setSavedBiz(true);
+            toast.success(msmeProfile ? "Business profile updated" : "Business profile created");
+            setTimeout(() => setSavedBiz(false), 2500);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Failed to save business profile.";
+            setBizError(msg);
+            toast.error("Save failed", { description: msg });
+        } finally {
+            setSavingBiz(false);
         }
     };
 
@@ -116,6 +183,16 @@ export default function ProfilePage() {
                                 <Calendar className="w-3 h-3" />Joined {joinedDate}
                             </span>
                         )}
+                        {role === "msme" && msmeProfile && (
+                            <span className="inline-flex items-center gap-1 text-xs text-status-success">
+                                <CheckCircle className="w-3 h-3" />Business profile active
+                            </span>
+                        )}
+                        {role === "msme" && !msmeProfile && !loadingBiz && (
+                            <span className="inline-flex items-center gap-1 text-xs text-mg-dim border border-dashed border-mg-lavender/20 rounded-full px-2 py-0.5">
+                                Business profile not set up
+                            </span>
+                        )}
                     </div>
                 </div>
             </motion.div>
@@ -127,8 +204,8 @@ export default function ProfilePage() {
 
                 <div>
                     <label className="mg-label block mb-1.5">Full Name</label>
-                    <div className="relative">
-                        {/* <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" /> */}
+                    <div className="relative flex items-center">
+                        <User className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
                         <input value={name} onChange={e => { setName(e.target.value); setSaveError(""); }}
                             placeholder="Your full name" className="mg-input pl-9" />
                     </div>
@@ -136,8 +213,8 @@ export default function ProfilePage() {
 
                 <div>
                     <label className="mg-label block mb-1.5">Email Address</label>
-                    <div className="relative">
-                        {/* <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" /> */}
+                    <div className="relative flex items-center">
+                        <Mail className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
                         <input value={user.email} readOnly
                             className="mg-input pl-9 opacity-60 cursor-not-allowed select-none" />
                     </div>
@@ -146,8 +223,8 @@ export default function ProfilePage() {
 
                 <div>
                     <label className="mg-label block mb-1.5">Organisation</label>
-                    <div className="relative">
-                        {/* <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" /> */}
+                    <div className="relative flex items-center">
+                        <Briefcase className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
                         <input value={org} onChange={e => setOrg(e.target.value)}
                             placeholder="Your organisation" className="mg-input pl-9" />
                     </div>
@@ -184,8 +261,86 @@ export default function ProfilePage() {
                 </button>
             </motion.div>
 
+            {/* ── MSME Business Profile ── */}
+            {role === "msme" && (
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.20 }}
+                    className="mg-card rounded-2xl p-6 space-y-5">
+                    <div className="flex items-center justify-between">
+                        <p className="mg-label">Business Profile</p>
+                        {loadingBiz && <Loader2 className="w-4 h-4 animate-spin text-mg-dim" />}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="mg-label block mb-1.5">
+                                Company Name <span className="text-status-danger">*</span>
+                            </label>
+                            <div className="relative flex items-center">
+                                <Briefcase className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
+                                <input value={companyName} onChange={e => { setCompanyName(e.target.value); setBizError(""); }}
+                                    placeholder="e.g. Sharma Industrial Exports Ltd"
+                                    className="mg-input pl-9" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="mg-label block mb-1.5">Contact Person</label>
+                            <div className="relative flex items-center">
+                                <User className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
+                                <input value={contactPerson} onChange={e => setContactPerson(e.target.value)}
+                                    placeholder="e.g. Arjun Sharma"
+                                    className="mg-input pl-9" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="mg-label block mb-1.5">Business Email</label>
+                            <div className="relative flex items-center">
+                                <Mail className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
+                                <input type="email" value={bizEmail} onChange={e => setBizEmail(e.target.value)}
+                                    placeholder="biz@company.com"
+                                    className="mg-input pl-9" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="mg-label block mb-1.5">Phone</label>
+                            <div className="relative flex items-center">
+                                <Phone className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
+                                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                                    placeholder="+91-9876543210"
+                                    className="mg-input pl-9" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="mg-label block mb-1.5">
+                            <span className="inline-flex items-center gap-1.5">
+                                <MapPin className="w-3.5 h-3.5" />Address
+                            </span>
+                        </label>
+                        <textarea value={address} onChange={e => setAddress(e.target.value)}
+                            placeholder="123 Industrial Hub, Mumbai, Maharashtra, 400001"
+                            rows={3}
+                            className="mg-input resize-none" />
+                    </div>
+
+                    {bizError && (
+                        <div className="flex items-center gap-2 p-3 rounded-xl text-sm text-status-danger"
+                            style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.18)" }}>
+                            <AlertCircle className="w-4 h-4 shrink-0" />{bizError}
+                        </div>
+                    )}
+
+                    <button onClick={handleSaveBiz} disabled={savingBiz}
+                        className={cn("mg-btn-primary w-full justify-center gap-2", savingBiz && "opacity-70 cursor-not-allowed")}>
+                        {savingBiz ? <><Loader2 className="w-4 h-4 animate-spin" />Saving&hellip;</> :
+                         savedBiz  ? <><CheckCircle className="w-4 h-4" />Saved!</> :
+                                     <><Save className="w-4 h-4" />{msmeProfile ? "Update Business Profile" : "Create Business Profile"}</>}
+                    </button>
+                </motion.div>
+            )}
+
             {/* ── Security ── */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.20 }}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: role === "msme" ? 0.26 : 0.20 }}
                 className="mg-card rounded-2xl p-6 space-y-4">
                 <p className="mg-label mb-1">Security</p>
                 <div className="flex items-center justify-between">

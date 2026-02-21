@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Search, ShieldCheck, ShieldAlert, ShieldX, Cpu, X,
-         BadgeCheck, User, Building2, DollarSign, Hash } from "lucide-react";
+         BadgeCheck, User, Building2, DollarSign, Hash,
+         Copy, Check, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { lenderAPI, LenderVerifyResult } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,40 @@ type ResultState = {
     data?: LenderVerifyResult;
     message?: string;
 };
+
+// ─── Copyable transaction hash row ──────────────────────────────────────────
+function CopyableHash({ label, hash, explorerBase }: { label: string; hash: string; explorerBase: string }) {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = () => {
+        navigator.clipboard.writeText(hash);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+    return (
+        <div className="flex items-start gap-2.5 text-xs">
+            <Hash className="w-3.5 h-3.5 text-mg-cosmic shrink-0 mt-0.5" />
+            <span className="text-mg-dim w-20 shrink-0">{label}</span>
+            <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                <span className="font-mono text-[10px] text-mg-cosmic/90 break-all">
+                    {hash.slice(0, 12)}…{hash.slice(-8)}
+                </span>
+                <button
+                    onClick={handleCopy}
+                    title={copied ? "Copied!" : `Copy ${label}`}
+                    className="shrink-0 p-1 rounded hover:bg-mg-elevated transition-colors">
+                    {copied
+                        ? <Check  className="w-3 h-3 text-status-success" />
+                        : <Copy   className="w-3 h-3 text-mg-dim hover:text-mg-lavender" />}
+                </button>
+                <a href={`${explorerBase}${hash}`} target="_blank" rel="noopener noreferrer"
+                    title="View on Etherscan"
+                    className="shrink-0 p-1 rounded hover:bg-mg-elevated transition-colors">
+                    <ExternalLink className="w-3 h-3 text-mg-dim hover:text-mg-cosmic" />
+                </a>
+            </div>
+        </div>
+    );
+}
 
 export const HashVerifier = () => {
     const searchParams  = useSearchParams();
@@ -222,7 +257,7 @@ export const HashVerifier = () => {
                                         </div>
                                     ))}
 
-                                    {/* Hash */}
+                                    {/* SHA-256 hash row */}
                                     <div className="mt-1 pt-2.5 border-t border-mg-lavender/10 flex items-start gap-2.5 text-xs">
                                         <Hash className="w-3.5 h-3.5 text-mg-dim shrink-0 mt-0.5" />
                                         <span className="text-mg-dim w-20 shrink-0">SHA-256</span>
@@ -230,6 +265,24 @@ export const HashVerifier = () => {
                                             {result.data.invoice.invoiceHash}
                                         </span>
                                     </div>
+
+                                    {/* On-chain registration tx hash */}
+                                    {result.data.verification.registeredOnChain && result.data.invoice.blockchainTxHash && (
+                                        <CopyableHash
+                                            label="Reg. TX"
+                                            hash={result.data.invoice.blockchainTxHash}
+                                            explorerBase="https://sepolia.etherscan.io/tx/"
+                                        />
+                                    )}
+
+                                    {/* Finance tx hash */}
+                                    {result.data.invoice.financeTxHash && (
+                                        <CopyableHash
+                                            label="Finance TX"
+                                            hash={result.data.invoice.financeTxHash}
+                                            explorerBase="https://sepolia.etherscan.io/tx/"
+                                        />
+                                    )}
 
                                     {/* On-chain badge */}
                                     <div className="flex items-center gap-1.5 pt-1">

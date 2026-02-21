@@ -48,46 +48,63 @@ const verifyInvoice = async (req, res, next) => {
     try {
         const identifier = req.params.invoiceId;
 
-        // 1. Find invoice in DB
-        // STRICT RBAC: Lender can only verify if they are the designated recipient 
-        // OR if they have the specific ID (Option B support)
+        // Find invoice — allow lookup by invoiceId OR invoiceHash
         const invoice = await Invoice.findOne({
             $or: [
                 { invoiceId: identifier },
                 { invoiceHash: identifier }
             ]
-        }).populate('uploadedBy', 'organization');
+        })
+            .populate('uploadedBy', 'name email organization')
+            .populate('financedBy',  'name email organization');
 
         if (!invoice) {
             return next(new AppError('Invoice not found or access denied', 404));
         }
 
-        // Check if explicitly submitted to this lender
+        // RBAC: lender can only verify invoices submitted to them
         if (invoice.submittedTo && invoice.submittedTo.toString() !== req.user.id.toString()) {
             return next(new AppError('This invoice was submitted to another lender. Access denied.', 403));
         }
 
-        // 2. Fetch on-chain status
+        // Fetch on-chain status
         const [bcFile, bcReceivable] = await Promise.all([
             verifyInvoiceOnChain(invoice.invoiceHash),
             verifyReceivableOnChain(invoice.receivableFingerprint),
         ]);
 
-        const verificationData = {
-            id: invoice.invoiceId,
-            status: invoice.status,
-            trustMetadata: {
-                isRegisteredOnChain: bcFile?.registered || false,
-                isDocumentFinanced: bcFile?.financed || false,
-                isReceivableFinanced: bcReceivable?.financed || false,
-                canFinance: !bcReceivable?.financed && invoice.status === 'UPLOADED'
-            },
-            msme: {
-                organization: invoice.uploadedBy.organization
-            }
-        };
+        const registeredOnChain = bcFile?.registered  || false;
+        const docFinanced       = bcFile?.financed     || false;
+        const recFinanced       = bcReceivable?.financed || false;
+        const isDuplicate       = docFinanced || recFinanced || invoice.status === 'FINANCED';
+        const canFinance        = !isDuplicate && invoice.status === 'UPLOADED' && registeredOnChain;
 
-        return sendResponse(res, 200, verificationData, 'Verification result retrieved successfully');
+        return sendResponse(res, 200, {
+            invoice: {
+                id:                invoice._id,
+                invoiceId:         invoice.invoiceId,
+                amount:            invoice.amount,
+                currency:          invoice.currency || 'INR',
+                status:            invoice.status,
+                invoiceHash:       invoice.invoiceHash,
+                blockchainTxHash:  invoice.blockchainTxHash  || null,
+                financeTxHash:     invoice.financeTxHash     || null,
+                uploadedBy:  invoice.uploadedBy
+                    ? { name: invoice.uploadedBy.name, email: invoice.uploadedBy.email, organization: invoice.uploadedBy.organization }
+                    : null,
+                financedBy: invoice.financedBy
+                    ? { name: invoice.financedBy.name, email: invoice.financedBy.email, organization: invoice.financedBy.organization }
+                    : null,
+                financedAt: invoice.financedAt || null,
+            },
+            verification: {
+                valid:             !!invoice,
+                duplicate:         isDuplicate,
+                financed:          invoice.status === 'FINANCED',
+                registeredOnChain: registeredOnChain,
+            },
+            canFinance,
+        }, 'Verification result retrieved successfully');
     } catch (error) {
         next(error);
     }

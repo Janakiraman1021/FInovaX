@@ -26,9 +26,10 @@ export interface RegisterPayload {
 }
 
 async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const { headers: optHeaders, ...restOptions } = options;
     const res = await fetch(`${API_BASE}${path}`, {
-        headers: { "Content-Type": "application/json", ...(options.headers ?? {}) },
-        ...options,
+        ...restOptions,
+        headers: { "Content-Type": "application/json", ...(optHeaders ?? {}) },
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Request failed");
@@ -117,43 +118,24 @@ export const invoiceAPI = {
 export interface MSMEProfile {
     _id: string;
     userId: string;
-    sellerGSTIN: string;
-    buyerGSTIN: string;
-    invoiceAmount?: number;
-    invoiceDate?: string;
-    poReference?: string;
     companyName?: string;
     contactPerson?: string;
     email?: string;
     phone?: string;
-    address?: {
-        street?: string;
-        city?: string;
-        state?: string;
-        pincode?: string;
-        country?: string;
-    };
+    /** Stored as a plain string, e.g. "123 Industrial Hub, Mumbai" */
+    address?: string;
     createdAt: string;
     updatedAt: string;
 }
 
 export interface MSMEProfilePayload {
-    sellerGSTIN: string;
-    buyerGSTIN: string;
-    invoiceAmount?: number;
-    invoiceDate?: string;
-    poReference?: string;
-    companyName?: string;
+    /** Required by backend */
+    companyName: string;
     contactPerson?: string;
     email?: string;
     phone?: string;
-    address?: {
-        street?: string;
-        city?: string;
-        state?: string;
-        pincode?: string;
-        country?: string;
-    };
+    /** Plain address string */
+    address?: string;
 }
 
 export const msmeProfileAPI = {
@@ -222,6 +204,10 @@ export interface LenderVerifyResult {
         currency: string;
         status: string;
         invoiceHash: string;
+        /** Blockchain tx hash from the on-chain registration (anchoring) */
+        blockchainTxHash: string | null;
+        /** Blockchain tx hash from the finance/disburse transaction */
+        financeTxHash: string | null;
         uploadedBy: { name: string; email: string; organization: string } | null;
         financedBy: { name: string; email: string; organization: string } | null;
         financedAt: string | null;
@@ -248,12 +234,14 @@ export const lenderAPI = {
         );
     },
 
-    /** GET /api/v1/lender/verify/:invoiceId — accepts invoiceId or invoiceHash */
-    verifyInvoice: (token: string, invoiceIdOrHash: string) =>
+    /** GET /api/v1/lender/verify/:invoiceId — verify invoice by invoiceId */
+    verifyInvoice: (token: string, invoiceId: string) =>
         apiRequest<{ success: boolean; data: LenderVerifyResult }>(
-            `/api/v1/lender/verify/${encodeURIComponent(invoiceIdOrHash)}`,
+            `/api/v1/lender/verify/${encodeURIComponent(invoiceId)}`,
+
             { headers: { Authorization: `Bearer ${token}` } }
         ),
+
 
     /** POST /api/v1/lender/finance/:invoiceId */
     financeInvoice: (token: string, invoiceId: string) =>
