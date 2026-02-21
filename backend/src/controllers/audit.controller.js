@@ -20,7 +20,7 @@ const getAllInvoices = async (req, res, next) => {
                 .populate('uploadedBy', 'organization')
                 .populate('financedBy', 'organization')
                 .populate('submittedTo', 'organization')
-                .select('-sellerGSTIN -buyerGSTIN -poReference -invoiceHash') // Mask sensitive business details
+                .select('-sellerGSTIN -buyerGSTIN -poReference -invoiceHash -ipfsCID -originalFileName') // Mask sensitive business details & block PDF access
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(parseInt(limit)),

@@ -22,4 +22,7 @@ router.post(
 // GET /api/invoices/my — MSME only
 router.get('/my', authorize('msme'), getMyInvoices);
 
+// POST /api/invoices/:invoiceId/submit — MSME only
+router.post('/:invoiceId/submit', authorize('msme'), submitInvoice);
+
 module.exports = router;

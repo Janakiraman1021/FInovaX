@@ -14,7 +14,7 @@ const getAllInvoices = async (req, res, next) => {
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         // STRICT RBAC: Only see invoices explicitly submitted to this lender
-        const filter = { submittedTo: req.user.id };
+        const filter = { submittedTo: { $in: [req.user.id] } };
         if (status) filter.status = status.toUpperCase();
 
         const [invoices, total] = await Promise.all([
@@ -56,15 +56,15 @@ const verifyInvoice = async (req, res, next) => {
             ]
         })
             .populate('uploadedBy', 'name email organization')
-            .populate('financedBy',  'name email organization');
+            .populate('financedBy', 'name email organization');
 
         if (!invoice) {
             return next(new AppError('Invoice not found or access denied', 404));
         }
 
         // RBAC: lender can only verify invoices submitted to them
-        if (invoice.submittedTo && invoice.submittedTo.toString() !== req.user.id.toString()) {
-            return next(new AppError('This invoice was submitted to another lender. Access denied.', 403));
+        if (invoice.submittedTo && !invoice.submittedTo.includes(req.user.id)) {
+            return next(new AppError('This invoice was not submitted to you. Access denied.', 403));
         }
 
         // Fetch on-chain status
@@ -73,23 +73,23 @@ const verifyInvoice = async (req, res, next) => {
             verifyReceivableOnChain(invoice.receivableFingerprint),
         ]);
 
-        const registeredOnChain = bcFile?.registered  || false;
-        const docFinanced       = bcFile?.financed     || false;
-        const recFinanced       = bcReceivable?.financed || false;
-        const isDuplicate       = docFinanced || recFinanced || invoice.status === 'FINANCED';
-        const canFinance        = !isDuplicate && invoice.status === 'UPLOADED' && registeredOnChain;
+        const registeredOnChain = bcFile?.registered || false;
+        const docFinanced = bcFile?.financed || false;
+        const recFinanced = bcReceivable?.financed || false;
+        const isDuplicate = docFinanced || recFinanced || invoice.status === 'FINANCED';
+        const canFinance = !isDuplicate && invoice.status === 'UPLOADED' && registeredOnChain;
 
         return sendResponse(res, 200, {
             invoice: {
-                id:                invoice._id,
-                invoiceId:         invoice.invoiceId,
-                amount:            invoice.amount,
-                currency:          invoice.currency || 'INR',
-                status:            invoice.status,
-                invoiceHash:       invoice.invoiceHash,
-                blockchainTxHash:  invoice.blockchainTxHash  || null,
-                financeTxHash:     invoice.financeTxHash     || null,
-                uploadedBy:  invoice.uploadedBy
+                id: invoice._id,
+                invoiceId: invoice.invoiceId,
+                amount: invoice.amount,
+                currency: invoice.currency || 'INR',
+                status: invoice.status,
+                invoiceHash: invoice.invoiceHash,
+                blockchainTxHash: invoice.blockchainTxHash || null,
+                financeTxHash: invoice.financeTxHash || null,
+                uploadedBy: invoice.uploadedBy
                     ? { name: invoice.uploadedBy.name, email: invoice.uploadedBy.email, organization: invoice.uploadedBy.organization }
                     : null,
                 financedBy: invoice.financedBy
@@ -98,9 +98,9 @@ const verifyInvoice = async (req, res, next) => {
                 financedAt: invoice.financedAt || null,
             },
             verification: {
-                valid:             !!invoice,
-                duplicate:         isDuplicate,
-                financed:          invoice.status === 'FINANCED',
+                valid: !!invoice,
+                duplicate: isDuplicate,
+                financed: invoice.status === 'FINANCED',
                 registeredOnChain: registeredOnChain,
             },
             canFinance,
@@ -121,7 +121,7 @@ const financeInvoice = async (req, res, next) => {
         // 1. Validate invoice exists and is assigned to this lender
         const invoice = await Invoice.findOne({
             invoiceId: invoiceId,
-            submittedTo: req.user.id
+            submittedTo: { $in: [req.user.id] }
         });
 
         if (!invoice) {
