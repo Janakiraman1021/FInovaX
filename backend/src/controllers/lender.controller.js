@@ -119,6 +119,43 @@ const verifyInvoice = async (req, res, next) => {
         const isDuplicate = docFinanced || recFinanced || invoice.status === 'FINANCED';
         const canFinance = !isDuplicate && invoice.status === 'UPLOADED' && registeredOnChain;
 
+        // Audit log for invoice verification
+        await createAuditLog({
+            action: 'invoice_verified',
+            performedBy: req.user.id,
+            invoiceId: invoice._id,
+            receivableFingerprint: invoice.receivableFingerprint,
+            details: {
+                invoiceId: invoice.invoiceId,
+                receivableFingerprint: invoice.receivableFingerprint,
+                registeredOnChain,
+                isDuplicate,
+                canFinance,
+                verificationResult: {
+                    docFinanced,
+                    recFinanced,
+                    status: invoice.status
+                }
+            },
+            ipAddress: req.ip,
+            requestId: req.requestId,
+        });
+
+        // Log receivable verification
+        await createAuditLog({
+            action: 'RECEIVABLE_VERIFIED',
+            performedBy: req.user.id,
+            invoiceId: invoice._id,
+            receivableFingerprint: invoice.receivableFingerprint,
+            details: {
+                receivableFingerprint: invoice.receivableFingerprint,
+                isFinanced: recFinanced,
+                canFinance
+            },
+            ipAddress: req.ip,
+            requestId: req.requestId,
+        });
+
         return sendResponse(res, 200, {
             invoice: {
                 id: invoice._id,
@@ -214,7 +251,7 @@ const financeInvoice = async (req, res, next) => {
                 });
 
                 await createAuditLog({
-                    action: 'DUPLICATE_FINANCING_ATTEMPT',
+                    action: 'finance_blocked_duplicate',
                     performedBy: req.user.id,
                     invoiceId: invoice._id,
                     receivableFingerprint: invoice.receivableFingerprint,
@@ -222,6 +259,21 @@ const financeInvoice = async (req, res, next) => {
                         invoiceId: invoice.invoiceId,
                         receivableFingerprint: invoice.receivableFingerprint,
                         reason: 'Receivable already financed on blockchain'
+                    },
+                    ipAddress: req.ip,
+                    requestId: req.requestId,
+                });
+
+                // Log receivable blocked event
+                await createAuditLog({
+                    action: 'RECEIVABLE_BLOCKED',
+                    performedBy: req.user.id,
+                    invoiceId: invoice._id,
+                    receivableFingerprint: invoice.receivableFingerprint,
+                    details: {
+                        receivableFingerprint: invoice.receivableFingerprint,
+                        reason: 'Already financed on blockchain',
+                        attemptedBy: req.user.id
                     },
                     ipAddress: req.ip,
                     requestId: req.requestId,
@@ -251,7 +303,7 @@ const financeInvoice = async (req, res, next) => {
 
                 // Log the attempt for auditor visibility
                 await createAuditLog({
-                    action: 'DUPLICATE_FINANCING_ATTEMPT',
+                    action: 'finance_blocked_duplicate',
                     performedBy: req.user.id,
                     invoiceId: invoice._id,
                     receivableFingerprint: invoice.receivableFingerprint,
@@ -259,6 +311,22 @@ const financeInvoice = async (req, res, next) => {
                         invoiceId: invoice.invoiceId,
                         receivableFingerprint: invoice.receivableFingerprint,
                         blockchainError: bcError.message
+                    },
+                    ipAddress: req.ip,
+                    requestId: req.requestId,
+                });
+
+                // Log receivable blocked event
+                await createAuditLog({
+                    action: 'RECEIVABLE_BLOCKED',
+                    performedBy: req.user.id,
+                    invoiceId: invoice._id,
+                    receivableFingerprint: invoice.receivableFingerprint,
+                    details: {
+                        receivableFingerprint: invoice.receivableFingerprint,
+                        reason: 'Blockchain revert - already financed',
+                        blockchainError: bcError.message,
+                        attemptedBy: req.user.id
                     },
                     ipAddress: req.ip,
                     requestId: req.requestId,

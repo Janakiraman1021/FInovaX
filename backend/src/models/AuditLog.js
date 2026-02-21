@@ -6,14 +6,18 @@ const auditLogSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Event type is required'],
             enum: [
+                // User events
                 'user_registered',
                 'user_login',
+                // Invoice lifecycle events
                 'invoice_uploaded',
+                'invoice_submitted',
+                'invoice_submitted_to_additional_lender',
                 'invoice_registered_on_chain',
                 'invoice_financed',
                 'invoice_verified',
                 'finance_blocked_duplicate',
-                // On-chain event types:
+                // On-chain event types
                 'InvoiceRegistered',
                 'InvoiceFinanced',
                 'DuplicateFinancingAttempt',
@@ -22,7 +26,10 @@ const auditLogSchema = new mongoose.Schema(
                 'RECEIVABLE_FINANCED',
                 'RECEIVABLE_BLOCKED',
                 'RECEIVABLE_VERIFIED',
-                'DUPLICATE_RECEIVABLE_FINANCING_ATTEMPT'
+                'DUPLICATE_RECEIVABLE_FINANCING_ATTEMPT',
+                // Duplicate attempt tracking
+                'DUPLICATE_FINANCING_ATTEMPT',
+                'DUPLICATE_ATTEMPT'
             ],
             index: true,
         },
