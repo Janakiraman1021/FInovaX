@@ -6,7 +6,7 @@ import { Invoice, InvoiceStatus } from "@/lib/mock/mockInvoices";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { ExternalLink, LucideIcon } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 interface FilteredInvoicePageProps {
@@ -16,13 +16,13 @@ interface FilteredInvoicePageProps {
     status: InvoiceStatus | null;
     emptyMessage: string;
     accentClass?: string;
-    icon: LucideIcon;
+    icon: React.ReactNode;
     iconBg?: string;
     uploadLink?: boolean;
 }
 
 export default function FilteredInvoicePage({
-    title, subtitle, sectionLabel, status, emptyMessage, accentClass = "mg-accent-text", icon: Icon, iconBg, uploadLink,
+    title, subtitle, sectionLabel, status, emptyMessage, accentClass = "mg-accent-text", icon, iconBg, uploadLink,
 }: FilteredInvoicePageProps) {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading]   = useState(true);
@@ -47,7 +47,7 @@ export default function FilteredInvoicePage({
                 </div>
                 {uploadLink && (
                     <Link href="/msme/invoices/upload" className="mg-btn-primary text-sm gap-2">
-                        <Icon className="w-4 h-4" /> Upload Invoice
+                        {icon} Upload Invoice
                     </Link>
                 )}
             </motion.div>
@@ -57,7 +57,7 @@ export default function FilteredInvoicePage({
                     <div className="px-6 py-3 border-b border-mg-lavender/10 flex items-center gap-2">
                         <div className="w-7 h-7 rounded-lg flex items-center justify-center"
                             style={{ background: iconBg ?? "rgba(74,78,143,0.09)", border: "1px solid rgba(74,78,143,0.18)" }}>
-                            <Icon className="w-3.5 h-3.5 text-mg-lavender" />
+                            <span className="w-3.5 h-3.5 text-mg-lavender flex items-center justify-center">{icon}</span>
                         </div>
                         <span className="text-sm font-semibold text-mg-silver">{invoices.length} invoice{invoices.length !== 1 ? "s" : ""}</span>
                     </div>
@@ -77,7 +77,7 @@ export default function FilteredInvoicePage({
                                 <tr><td colSpan={6} className="py-16 text-center">
                                     <div className="flex flex-col items-center gap-3">
                                         <div className="w-12 h-12 rounded-2xl bg-mg-surface border border-mg-lavender/12 flex items-center justify-center">
-                                            <Icon className="w-6 h-6 text-mg-dim" />
+                                            <span className="w-6 h-6 text-mg-dim flex items-center justify-center">{icon}</span>
                                         </div>
                                         <p className="text-sm text-mg-dim italic">{emptyMessage}</p>
                                     </div>

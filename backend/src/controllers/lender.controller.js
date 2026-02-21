@@ -4,6 +4,45 @@ const { verifyInvoiceOnChain, markInvoiceFinancedOnChain } = require('../service
 const { createAuditLog } = require('../services/audit.service');
 
 /**
+ * GET /lender/invoices
+ * List all invoices — lender can filter by status.
+ */
+const getAllInvoices = async (req, res, next) => {
+    try {
+        const { page = 1, limit = 50, status } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const filter = {};
+        if (status) filter.status = status.toUpperCase();
+
+        const [invoices, total] = await Promise.all([
+            Invoice.find(filter)
+                .populate('uploadedBy', 'name email organization')
+                .populate('financedBy', 'name email organization')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit)),
+            Invoice.countDocuments(filter),
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                invoices,
+                pagination: {
+                    total,
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    totalPages: Math.ceil(total / parseInt(limit)),
+                },
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
  * GET /api/lender/verify/:invoiceId
  * Verify invoice status — check both DB and blockchain.
  */
@@ -157,4 +196,4 @@ const financeInvoice = async (req, res, next) => {
     }
 };
 
-module.exports = { verifyInvoice, financeInvoice };
+module.exports = { getAllInvoices, verifyInvoice, financeInvoice };

@@ -7,12 +7,21 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const { role, isAuthenticated } = useAuth();
+    const { isAuthenticated, isHydrating } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
-        if (!isAuthenticated) router.push("/login");
-    }, [isAuthenticated, router]);
+        if (!isHydrating && !isAuthenticated) router.push("/login");
+    }, [isHydrating, isAuthenticated, router]);
+
+    // Wait for session restore before making any auth decisions
+    if (isHydrating) {
+        return (
+            <div className="flex items-center justify-center h-screen" style={{ background: "var(--mg-base)" }}>
+                <div className="w-8 h-8 rounded-full border-2 border-mg-dim border-t-mg-lavender animate-spin" />
+            </div>
+        );
+    }
 
     if (!isAuthenticated) return null;
 

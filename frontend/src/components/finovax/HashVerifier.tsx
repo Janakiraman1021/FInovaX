@@ -1,44 +1,85 @@
 ﻿"use client";
 
-import { useState } from "react";
-import { Search, ShieldCheck, ShieldAlert, Cpu, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, ShieldCheck, ShieldAlert, ShieldX, Cpu, X,
+         BadgeCheck, User, Building2, DollarSign, Hash } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { api } from "@/lib/api";
+import { lenderAPI, LenderVerifyResult } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { useSearchParams } from "next/navigation";
+
+type ResultState = {
+    kind: "verified" | "financed" | "not_found" | "error";
+    data?: LenderVerifyResult;
+    message?: string;
+};
 
 export const HashVerifier = () => {
-    const [hash, setHash]          = useState("");
+    const searchParams  = useSearchParams();
+    const [query, setQuery]        = useState(() => searchParams.get("hash") ?? "");
     const [isVerifying, setVerify] = useState(false);
-    const [result, setResult]      = useState<any>(null);
+    const [result, setResult]      = useState<ResultState | null>(null);
 
-    const handleVerify = async () => {
-        if (!hash.trim()) return;
+    // Auto-verify when arriving from the invoice table Verify button
+    useEffect(() => {
+        const h = searchParams.get("hash");
+        if (h) {
+            setQuery(h);
+            // Trigger verify after state settles
+            const id = setTimeout(() => handleVerifyFor(h), 100);
+            return () => clearTimeout(id);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleVerifyFor = async (q: string) => {
+        const token = localStorage.getItem("finovax-token") ?? "";
+        if (!token || token.startsWith("mock.")) {
+            toast.error("Lender account required", { description: "Log in with a real lender account to verify invoices." });
+            return;
+        }
         setVerify(true);
         setResult(null);
         try {
-            const data = await api.invoices.verify(hash);
-            setResult(data);
-            if (data.exists && data.financedBy) {
-                toast.error("Duplicate financing detected", { description: "This hash is already registered on the ledger." });
-            } else if (data.exists) {
-                toast.success("Invoice authenticated", { description: "Hash match found. Security check passed." });
+            const res = await lenderAPI.verifyInvoice(token, q);
+            const d   = res.data;
+            if (d.verification.duplicate || d.verification.financed) {
+                setResult({ kind: "financed", data: d });
+                toast.error("Duplicate financing detected", { description: "This invoice is already financed on the ledger." });
             } else {
-                toast.warning("Hash not found", { description: "This invoice has not been broadcast to the network." });
+                setResult({ kind: "verified", data: d });
+                toast.success("Invoice authenticated", { description: `Hash verified · Status: ${d.invoice.status}` });
             }
-        } catch {
-            toast.error("Verification failed");
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Verification failed";
+            if (msg.includes("404") || msg.toLowerCase().includes("not found")) {
+                setResult({ kind: "not_found" });
+                toast.warning("Hash not found", { description: "No invoice with this ID or hash exists on the ledger." });
+            } else {
+                setResult({ kind: "error", message: msg });
+                toast.error("Verification failed", { description: msg });
+            }
         } finally {
             setVerify(false);
         }
     };
 
-    const rv = result
-        ? result.exists && result.financedBy
-            ? { bg: "rgba(220,38,38,0.08)",  border: "rgba(220,38,38,0.28)",  icon: ShieldAlert, iconColor: "#dc2626", title: "Fraud Alert",        body: `Double financing detected. Previously funded by: ${result.financedBy}.` }
-            : result.exists
-            ? { bg: "rgba(5,150,105,0.08)",   border: "rgba(5,150,105,0.28)",   icon: ShieldCheck, iconColor: "#059669", title: "Integrity Verified", body: "Invoice matched against the distributed ledger. No prior financing records found." }
-            : { bg: "rgba(217,119,6,0.08)",   border: "rgba(217,119,6,0.25)",   icon: ShieldAlert, iconColor: "#d97706", title: "Hash Not Found",     body: "This hash does not exist in the FInovaX audit trail. Verify the source document." }
+    const handleVerify = async () => {
+        const q = query.trim();
+        if (!q) return;
+        await handleVerifyFor(q);
+    };
+
+    const ui = result
+        ? result.kind === "financed"
+            ? { bg: "rgba(220,38,38,0.08)",  border: "rgba(220,38,38,0.28)",  Icon: ShieldX,     iconColor: "#dc2626", title: "Fraud Alert — Already Financed" }
+            : result.kind === "verified"
+            ? { bg: "rgba(5,150,105,0.08)",   border: "rgba(5,150,105,0.28)",   Icon: ShieldCheck, iconColor: "#059669", title: "Integrity Verified" }
+            : result.kind === "not_found"
+            ? { bg: "rgba(217,119,6,0.08)",   border: "rgba(217,119,6,0.25)",   Icon: ShieldAlert, iconColor: "#d97706", title: "Hash Not Found" }
+            : { bg: "rgba(220,38,38,0.06)",   border: "rgba(220,38,38,0.18)",   Icon: ShieldAlert, iconColor: "#dc2626", title: "Error" }
         : null;
 
     return (
@@ -51,7 +92,7 @@ export const HashVerifier = () => {
                 </div>
                 <div>
                     <p className="font-semibold text-mg-silver text-sm">Ledger Oracle</p>
-                    <p className="text-[10px] text-mg-dim">Verify invoice integrity via hash lookup</p>
+                    <p className="text-[10px] text-mg-dim">Verify invoice integrity via ID or hash lookup</p>
                 </div>
             </div>
 
@@ -61,14 +102,14 @@ export const HashVerifier = () => {
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim pointer-events-none" />
                     <input
                         type="text"
-                        value={hash}
-                        onChange={e => setHash(e.target.value)}
+                        value={query}
+                        onChange={e => setQuery(e.target.value)}
                         onKeyDown={e => e.key === "Enter" && handleVerify()}
-                        placeholder="Paste SHA-256 invoice hash…"
+                        placeholder="Invoice ID (INV-XXXX) or SHA-256 hash…"
                         className="mg-input pl-10 pr-10 font-mono text-sm"
                     />
-                    {hash && (
-                        <button onClick={() => { setHash(""); setResult(null); }}
+                    {query && (
+                        <button onClick={() => { setQuery(""); setResult(null); }}
                             className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-mg-elevated transition-colors">
                             <X className="w-3.5 h-3.5 text-mg-dim hover:text-mg-muted" />
                         </button>
@@ -78,10 +119,10 @@ export const HashVerifier = () => {
                 {/* Verify button */}
                 <button
                     onClick={handleVerify}
-                    disabled={isVerifying || !hash.trim()}
+                    disabled={isVerifying || !query.trim()}
                     className={cn(
                         "w-full py-2.5 rounded-lg text-sm font-semibold transition-all",
-                        isVerifying || !hash.trim()
+                        isVerifying || !query.trim()
                             ? "bg-mg-elevated text-mg-dim cursor-not-allowed"
                             : "mg-btn-primary justify-center"
                     )}
@@ -94,29 +135,106 @@ export const HashVerifier = () => {
                     ) : "Authenticate Hash"}
                 </button>
 
-                {/* Result */}
+                {/* Result card */}
                 <AnimatePresence>
-                    {rv && (
+                    {result && ui && (
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -6 }}
-                            className="p-4 rounded-xl flex items-start gap-3"
-                            style={{ background: rv.bg, border: `1px solid ${rv.border}` }}
+                            className="rounded-xl overflow-hidden"
+                            style={{ border: `1px solid ${ui.border}` }}
                         >
-                            <div className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5"
-                                style={{ background: rv.bg, border: `1px solid ${rv.border}` }}>
-                                <rv.icon className="w-4 h-4" style={{ color: rv.iconColor }} />
+                            {/* Status banner */}
+                            <div className="flex items-center gap-2.5 px-4 py-3"
+                                style={{ background: ui.bg }}>
+                                <ui.Icon className="w-4 h-4 shrink-0" style={{ color: ui.iconColor }} />
+                                <p className="text-sm font-semibold" style={{ color: ui.iconColor }}>
+                                    {ui.title}
+                                </p>
                             </div>
-                            <div className="min-w-0">
-                                <p className="text-sm font-semibold mb-1" style={{ color: rv.iconColor }}>{rv.title}</p>
-                                <p className="text-xs text-mg-muted leading-relaxed">{rv.body}</p>
-                                {result?.txHash && (
-                                    <p className="mt-2.5 text-[10px] font-mono text-mg-lavender/80 bg-mg-elevated px-2.5 py-1.5 rounded-lg border border-mg-lavender/12 break-all">
-                                        TX: {result.txHash}
+
+                            {/* Not-found / error body */}
+                            {(result.kind === "not_found" || result.kind === "error") && (
+                                <div className="px-4 py-3 bg-mg-elevated/40">
+                                    <p className="text-xs text-mg-muted">
+                                        {result.kind === "not_found"
+                                            ? "No invoice with this ID or hash exists in the FInovaX ledger. Check the source document."
+                                            : result.message}
                                     </p>
-                                )}
-                            </div>
+                                </div>
+                            )}
+
+                            {/* Invoice detail rows */}
+                            {result.data && (
+                                <div className="px-4 py-3 space-y-2.5 bg-mg-elevated/30">
+                                    {[
+                                        {
+                                            icon: BadgeCheck,
+                                            label: "Invoice ID",
+                                            value: result.data.invoice.invoiceId,
+                                            mono: true,
+                                        },
+                                        {
+                                            icon: DollarSign,
+                                            label: "Amount",
+                                            value: `${result.data.invoice.currency} ${formatCurrency(result.data.invoice.amount)}`,
+                                            mono: false,
+                                        },
+                                        {
+                                            icon: User,
+                                            label: "Uploaded By",
+                                            value: `${result.data.invoice.uploadedBy.name} · ${result.data.invoice.uploadedBy.organization}`,
+                                            mono: false,
+                                        },
+                                        ...(result.data.invoice.financedBy ? [{
+                                            icon: Building2,
+                                            label: "Financed By",
+                                            value: `${result.data.invoice.financedBy.name} · ${result.data.invoice.financedBy.organization}`,
+                                            mono: false,
+                                        }] : []),
+                                        ...(result.data.invoice.financedAt ? [{
+                                            icon: BadgeCheck,
+                                            label: "Financed At",
+                                            value: formatDate(result.data.invoice.financedAt),
+                                            mono: false,
+                                        }] : []),
+                                    ].map(row => (
+                                        <div key={row.label} className="flex items-start gap-2.5 text-xs">
+                                            <row.icon className="w-3.5 h-3.5 text-mg-dim shrink-0 mt-0.5" />
+                                            <span className="text-mg-dim w-20 shrink-0">{row.label}</span>
+                                            <span className={cn("text-mg-silver break-all", row.mono && "font-mono text-[10px]")}>
+                                                {row.value}
+                                            </span>
+                                        </div>
+                                    ))}
+
+                                    {/* Hash */}
+                                    <div className="mt-1 pt-2.5 border-t border-mg-lavender/10 flex items-start gap-2.5 text-xs">
+                                        <Hash className="w-3.5 h-3.5 text-mg-dim shrink-0 mt-0.5" />
+                                        <span className="text-mg-dim w-20 shrink-0">SHA-256</span>
+                                        <span className="font-mono text-[10px] text-mg-lavender/80 break-all">
+                                            {result.data.invoice.invoiceHash}
+                                        </span>
+                                    </div>
+
+                                    {/* On-chain badge */}
+                                    <div className="flex items-center gap-1.5 pt-1">
+                                        <span
+                                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                            style={result.data.verification.registeredOnChain
+                                                ? { background: "rgba(5,150,105,0.12)", color: "#059669", border: "1px solid rgba(5,150,105,0.25)" }
+                                                : { background: "rgba(217,119,6,0.10)", color: "#d97706", border: "1px solid rgba(217,119,6,0.22)" }
+                                            }>
+                                            {result.data.verification.registeredOnChain ? "✓ On-chain registered" : "⚠ Not yet on-chain"}
+                                        </span>
+                                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                            style={{ background: "rgba(74,78,143,0.10)", color: "#8b8fc8", border: "1px solid rgba(74,78,143,0.22)" }}>
+                                            Status: {result.data.invoice.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -125,7 +243,7 @@ export const HashVerifier = () => {
                 {!result && !isVerifying && (
                     <div className="mt-auto flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-mg-elevated border border-mg-lavender/10">
                         <div className="w-1.5 h-1.5 rounded-full bg-mg-lavender animate-pulse shrink-0" />
-                        <span className="text-[10px] text-mg-dim font-mono">Hash queries run against the Polygon zkEVM state</span>
+                        <span className="text-[10px] text-mg-dim font-mono">Accepts Invoice ID or SHA-256 hash · queries Polygon zkEVM state</span>
                     </div>
                 )}
             </div>
