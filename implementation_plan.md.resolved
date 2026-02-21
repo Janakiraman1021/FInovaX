@@ -1,0 +1,195 @@
+# FINOVAX Frontend — Implementation Plan
+
+A production-ready Web3 fintech prototype built with Next.js (App Router), simulating blockchain-backed invoice verification and financing with three roles: MSME, Lender, and Auditor.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Animation Library Choices**: The skill.md mentions Theatre.js and Anime.js. To ensure zero errors and a lean, stable build, I'll consolidate animations using **Framer Motion** (page transitions, pulse/glow effects, timeline) and **GSAP** (fraud alert shakes). This avoids compatibility issues and keeps the bundle manageable while delivering the same visual impact.
+
+> [!IMPORTANT]
+> **React Three Fiber**: The spec mentions R3F for immersive widgets. I'll include a simple animated 3D blockchain visualization on the Lender dashboard to satisfy this requirement without heavy complexity.
+
+> [!NOTE]
+> **MetaMask**: Will use `ethers.js` v6 for wallet connection. The connection is display-only (shows address in navbar) since there's no real blockchain interaction yet.
+
+---
+
+## Proposed Changes
+
+### Project Setup
+
+#### [NEW] [package.json](file:///e:/FInovaX/backend/package.json) — Next.js 14 + dependencies
+- Next.js 14, React 18, TypeScript
+- `tailwindcss`, `postcss`, `autoprefixer`
+- `framer-motion`, `gsap`, `lenis`
+- `@radix-ui/react-dialog`, `@radix-ui/react-dropdown-menu`
+- `sonner` (toast notifications)
+- `ethers` (MetaMask wallet)
+- `@react-three/fiber`, `@react-three/drei`, `three`
+
+#### [NEW] `tailwind.config.ts` — Custom theme
+- Deep Sea + Midnight Galaxy color palette
+- Custom animations (pulse, shimmer, shake)
+
+#### [NEW] `src/app/globals.css` — Global styles
+- Tailwind directives + custom CSS for gradients and glows
+
+#### [NEW] `src/app/layout.tsx` — Root layout
+- Font loading, AuthProvider, Toaster, smooth scroll setup
+
+---
+
+### Mock Data Layer (`src/lib/mock/`)
+
+#### [NEW] `mockInvoices.ts`
+- `Invoice` interface with strict typing
+- 6 sample invoices across all statuses
+- In-memory array with push/update helpers
+
+#### [NEW] `mockLedger.ts`
+- Ledger entries mapped by invoice hash
+- `simulateLedgerLookup(hash)` — 1.2s delay, returns `{ exists, financedBy, txHash }`
+
+#### [NEW] `mockUsers.ts`
+- Demo users for MSME, Lender, Auditor roles
+
+#### [NEW] `mockStats.ts`
+- Auditor dashboard stats: totalVolume, fraudAttemptsBlocked, activeMSMEs, totalInvoices
+- Audit timeline events array
+
+---
+
+### API Layer (`src/lib/`)
+
+#### [NEW] `api.ts`
+- Mock API functions for all 6 endpoints
+- `setTimeout` delays (600–1400ms) for realistic latency
+- Returns Promise-wrapped mock data
+
+#### [NEW] `utils.ts`
+- `generateSHA256(content)` using Web Crypto API
+- `generateTxHash()` — creates `0xFINO` + random hex
+- `formatCurrency()`, `formatDate()` helpers
+
+---
+
+### Auth System
+
+#### [NEW] `src/context/AuthContext.tsx`
+- React Context with `role`, `login()`, `logout()`, `switchRole()`
+- Mock JWT generation: `mock.jwt.finovax.[role]`
+- Persists to `localStorage`
+
+#### [NEW] `src/app/(auth)/login/page.tsx`
+- Role selection cards (MSME, Lender, Auditor)
+- Animated entry with Framer Motion
+- MetaMask connection option
+
+#### [NEW] `src/middleware.ts`
+- Route protection based on role cookie
+- Redirects unauthorized access to `/login`
+
+---
+
+### Shared Components (`src/components/shared/`)
+
+#### [NEW] `Navbar.tsx`
+- Logo, role indicator badge, wallet address display
+- Demo mode toggle switch
+- Role switcher dropdown (in presentation mode)
+
+#### [NEW] `Sidebar.tsx`
+- Role-aware navigation links
+- Active state highlighting
+- Collapsible on mobile
+
+#### [NEW] `StatusBadge.tsx`
+- Gradient backgrounds per status (PENDING/VERIFIED/FINANCED/FRAUD_ALERT)
+- Framer Motion pulse animation for PENDING
+
+#### [NEW] `BlockHeightCounter.tsx`
+- Animated incrementing block counter for demo mode
+
+---
+
+### FINOVAX Components (`src/components/finovax/`)
+
+#### [NEW] `InvoiceUploader.tsx`
+- Drag-and-drop zone with file input
+- Client-side SHA-256 hash generation
+- Progress animation bar
+- Sonner toast on submission
+
+#### [NEW] `HashVerifier.tsx`
+- Search input for invoice hash
+- Scanning animation effect
+- Displays verification result with status-appropriate animation
+
+#### [NEW] `LedgerViewer.tsx`
+- Transaction details display
+- Fake block confirmations counter
+
+#### [NEW] `FraudAlertModal.tsx`
+- Radix Dialog with GSAP shake animation
+- Warning text about duplicate financing
+- High-contrast red visuals
+
+---
+
+### Dashboard Pages
+
+#### [NEW] `src/app/(dashboard)/layout.tsx`
+- Shared dashboard layout with Sidebar + Navbar
+- Auth guard wrapper
+
+#### [NEW] `src/app/(dashboard)/msme/page.tsx`
+- InvoiceUploader component
+- Invoice history table with StatusBadges
+- Auto-transition PENDING → VERIFIED after 2s
+
+#### [NEW] `src/app/(dashboard)/lender/page.tsx`
+- HashVerifier widget
+- Invoice list with verification/disburse actions
+- R3F blockchain visualization widget
+
+#### [NEW] `src/app/(dashboard)/auditor/page.tsx`
+- Stats cards (volume, fraud blocked, MSMEs, invoices)
+- Audit trail animated timeline (Framer Motion)
+
+---
+
+### MetaMask Integration
+
+#### [NEW] `src/hooks/useWallet.ts`
+- `ethers.BrowserProvider` for MetaMask connection
+- `connect()`, `disconnect()`, `account`, `isConnected` state
+- Auto-detect provider
+
+---
+
+### Landing Page
+
+#### [NEW] `src/app/page.tsx`
+- Hero section with animated gradient
+- Feature highlights
+- CTA to login
+
+---
+
+## Verification Plan
+
+### Automated Tests
+1. **Build check**: `npm run build` — must complete with zero errors
+2. **Type check**: `npx tsc --noEmit` — must pass with zero type errors
+3. **Lint check**: `npm run lint` — must pass
+
+### Browser Testing
+1. Start dev server: `npm run dev`
+2. Navigate to `http://localhost:3000` — verify landing page renders
+3. Click login → select MSME role → verify dashboard loads
+4. Upload invoice → verify toast + status badge appears
+5. Switch to Lender → verify hash verifier works
+6. Switch to Auditor → verify stats dashboard renders
+7. Test MetaMask connection button (if MetaMask installed)
+8. Toggle Demo Mode → verify role switcher and block counter appear
