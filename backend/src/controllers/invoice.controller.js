@@ -1,9 +1,9 @@
 const multer = require('multer');
+const crypto = require('crypto');
 const Invoice = require('../models/Invoice');
 const AppError = require('../utils/AppError');
 const { hashBuffer } = require('../utils/hash');
 const { uploadToIPFS } = require('../services/ipfs.service');
-const { registerInvoiceOnChain } = require('../services/blockchain.service');
 const { createAuditLog } = require('../services/audit.service');
 
 // Multer config — store in memory for hashing / IPFS upload
@@ -20,7 +20,7 @@ const upload = multer({
 });
 
 /**
- * POST /api/invoices
+ * POST /api/invoices/upload
  * Upload an invoice PDF (MSME only).
  */
 const createInvoice = async (req, res, next) => {
@@ -29,14 +29,17 @@ const createInvoice = async (req, res, next) => {
             return next(new AppError('Invoice PDF file is required', 400));
         }
 
-        const { invoiceNumber, amount, currency, description } = req.body;
+        const { amount, currency, description } = req.body;
         const fileBuffer = req.file.buffer;
 
+        // Generate unique invoiceId
+        const invoiceId = `INV-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+
         // 1. Generate SHA-256 hash
-        const fileHash = hashBuffer(fileBuffer);
+        const invoiceHash = hashBuffer(fileBuffer);
 
         // 2. Check for duplicate hash in DB
-        const existingByHash = await Invoice.findOne({ fileHash });
+        const existingByHash = await Invoice.findOne({ invoiceHash });
         if (existingByHash) {
             return next(new AppError('An invoice with this exact file already exists (duplicate hash)', 409));
         }
@@ -44,93 +47,70 @@ const createInvoice = async (req, res, next) => {
         // 3. Upload to IPFS
         const ipfsResult = await uploadToIPFS(fileBuffer, req.file.originalname);
 
-        // 4. Register hash on blockchain
-        let blockchainResult = null;
-        try {
-            blockchainResult = await registerInvoiceOnChain(fileHash, invoiceNumber);
-        } catch (bcError) {
-            console.warn('Blockchain registration failed, proceeding without:', bcError.message);
-        }
-
-        // 5. Save invoice to MongoDB
+        // 4. Save invoice metadata to MongoDB (DO NOT WRITE TO BLOCKCHAIN YET)
         const invoice = await Invoice.create({
-            invoiceNumber,
-            msmeId: req.user.id,
-            amount: parseFloat(amount),
+            invoiceId,
+            uploadedBy: req.user.id,
+            amount: parseFloat(amount || 0),
             currency: currency || 'INR',
             description,
-            fileHash,
-            ipfsCid: ipfsResult.cid,
+            invoiceHash,
+            ipfsCID: ipfsResult.cid,
             originalFileName: req.file.originalname,
-            status: blockchainResult ? 'registered' : 'uploaded',
-            blockchainTxHash: blockchainResult?.txHash || null,
+            status: 'UPLOADED',
         });
 
-        // 6. Audit log
+        // 5. Audit log
         await createAuditLog({
             action: 'invoice_uploaded',
             performedBy: req.user.id,
             invoiceId: invoice._id,
-            details: { invoiceNumber, fileHash, ipfsCid: ipfsResult.cid },
+            details: { invoiceId, invoiceHash, ipfsCID: ipfsResult.cid },
             ipAddress: req.ip,
         });
 
-        if (blockchainResult) {
-            await createAuditLog({
-                action: 'invoice_registered_on_chain',
-                performedBy: req.user.id,
-                invoiceId: invoice._id,
-                txHash: blockchainResult.txHash,
-                details: { fileHash },
-                ipAddress: req.ip,
-            });
-        }
-
         res.status(201).json({
             success: true,
-            message: 'Invoice uploaded successfully',
+            message: 'Invoice uploaded securely. Pending blockchain verification by lender.',
             data: {
                 invoice: {
-                    id: invoice._id,
-                    invoiceNumber: invoice.invoiceNumber,
+                    invoiceId: invoice.invoiceId,
+                    invoiceHash: invoice.invoiceHash,
+                    ipfsCID: invoice.ipfsCID,
+                    uploadedBy: invoice.uploadedBy,
+                    status: invoice.status,
                     amount: invoice.amount,
                     currency: invoice.currency,
-                    fileHash: invoice.fileHash,
-                    ipfsCid: invoice.ipfsCid,
-                    status: invoice.status,
-                    blockchainTxHash: invoice.blockchainTxHash,
                     createdAt: invoice.createdAt,
                 },
             },
         });
     } catch (error) {
+        if (error.name === 'ValidationError') {
+            return next(new AppError(Object.values(error.errors).map(val => val.message).join(', '), 400));
+        }
         next(error);
     }
 };
 
 /**
- * GET /api/invoices
- * List invoices. MSME sees own; Lender/Auditor sees all.
+ * GET /api/invoices/my
+ * List MSME's invoices.
  */
-const getInvoices = async (req, res, next) => {
+const getMyInvoices = async (req, res, next) => {
     try {
         const { page = 1, limit = 20, status } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const filter = {};
-
-        // MSME only sees their own invoices
-        if (req.user.role === 'msme') {
-            filter.msmeId = req.user.id;
-        }
+        const filter = { uploadedBy: req.user.id };
 
         if (status) {
-            filter.status = status;
+            filter.status = status.toUpperCase();
         }
 
         const [invoices, total] = await Promise.all([
             Invoice.find(filter)
-                .populate('msmeId', 'name email organization')
+                .populate('uploadedBy', 'name email organization')
                 .populate('financedBy', 'name email organization')
                 .sort({ createdAt: -1 })
                 .skip(skip)
@@ -155,34 +135,4 @@ const getInvoices = async (req, res, next) => {
     }
 };
 
-/**
- * GET /api/invoices/:id
- * Get single invoice by ID.
- */
-const getInvoiceById = async (req, res, next) => {
-    try {
-        const filter = { _id: req.params.id };
-
-        // MSME can only view own invoices
-        if (req.user.role === 'msme') {
-            filter.msmeId = req.user.id;
-        }
-
-        const invoice = await Invoice.findOne(filter)
-            .populate('msmeId', 'name email organization')
-            .populate('financedBy', 'name email organization');
-
-        if (!invoice) {
-            return next(new AppError('Invoice not found', 404));
-        }
-
-        res.json({
-            success: true,
-            data: { invoice },
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-module.exports = { upload, createInvoice, getInvoices, getInvoiceById };
+module.exports = { upload, createInvoice, getMyInvoices };
