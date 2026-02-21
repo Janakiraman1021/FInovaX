@@ -128,7 +128,7 @@ export default function ProfilePage() {
                 <div>
                     <label className="mg-label block mb-1.5">Full Name</label>
                     <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" />
+                        {/* <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" /> */}
                         <input value={name} onChange={e => { setName(e.target.value); setSaveError(""); }}
                             placeholder="Your full name" className="mg-input pl-9" />
                     </div>
@@ -137,7 +137,7 @@ export default function ProfilePage() {
                 <div>
                     <label className="mg-label block mb-1.5">Email Address</label>
                     <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" />
+                        {/* <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" /> */}
                         <input value={user.email} readOnly
                             className="mg-input pl-9 opacity-60 cursor-not-allowed select-none" />
                     </div>
@@ -147,7 +147,7 @@ export default function ProfilePage() {
                 <div>
                     <label className="mg-label block mb-1.5">Organisation</label>
                     <div className="relative">
-                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" />
+                        {/* <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mg-dim" /> */}
                         <input value={org} onChange={e => setOrg(e.target.value)}
                             placeholder="Your organisation" className="mg-input pl-9" />
                     </div>
