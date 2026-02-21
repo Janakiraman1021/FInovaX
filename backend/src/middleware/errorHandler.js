@@ -37,11 +37,15 @@ const errorHandler = (err, _req, res, _next) => {
         message = 'Token expired';
     }
 
-    console.error(`[ERROR] ${statusCode} - ${message}`, process.env.NODE_ENV === 'development' ? err.stack : '');
+    const errorCode = err.errorCode || 'INTERNAL_SERVER_ERROR';
+
+    console.error(`[ERROR] ${statusCode} - [${errorCode}] - ${message}`, process.env.NODE_ENV === 'development' ? err.stack : '');
 
     res.status(statusCode).json({
         success: false,
+        errorCode,
         message,
+        requestId: _req.requestId,
         ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
     });
 };

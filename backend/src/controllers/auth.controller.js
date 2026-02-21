@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const AppError = require('../utils/AppError');
 const { createAuditLog } = require('../services/audit.service');
+const { sendResponse } = require('../utils/response');
 
 /**
  * Generate JWT token.
@@ -23,7 +24,7 @@ const register = async (req, res, next) => {
         // Check if user already exists
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            return next(new AppError('Email already registered', 409));
+            return next(new AppError('Email already registered', 409, 'DUPLICATE_USER'));
         }
 
         const user = await User.create({ name, email, password, role, organization });
@@ -34,22 +35,19 @@ const register = async (req, res, next) => {
             performedBy: user._id,
             details: { role, email },
             ipAddress: req.ip,
+            requestId: req.requestId,
         });
 
-        res.status(201).json({
-            success: true,
-            message: 'User registered successfully',
-            data: {
-                user: {
-                    id: user._id,
-                    name: user.name,
-                    email: user.email,
-                    role: user.role,
-                    organization: user.organization,
-                },
-                token,
+        return sendResponse(res, 201, {
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                organization: user.organization,
             },
-        });
+            token,
+        }, 'User registered successfully');
     } catch (error) {
         next(error);
     }
@@ -67,7 +65,7 @@ const login = async (req, res, next) => {
         const user = await User.findOne({ email, isActive: true }).select('+password');
 
         if (!user || !(await user.comparePassword(password))) {
-            return next(new AppError('Invalid email or password', 401));
+            return next(new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS'));
         }
 
         const token = signToken(user._id);
@@ -77,22 +75,19 @@ const login = async (req, res, next) => {
             performedBy: user._id,
             details: { email },
             ipAddress: req.ip,
+            requestId: req.requestId,
         });
 
-        res.json({
-            success: true,
-            message: 'Login successful',
-            data: {
-                user: {
-                    id: user._id,
-                    name: user.name,
-                    email: user.email,
-                    role: user.role,
-                    organization: user.organization,
-                },
-                token,
+        return sendResponse(res, 200, {
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                organization: user.organization,
             },
-        });
+            token,
+        }, 'Login successful');
     } catch (error) {
         next(error);
     }
@@ -110,16 +105,13 @@ const getMe = async (req, res, next) => {
             return next(new AppError('User not found', 404));
         }
 
-        res.json({
-            success: true,
-            data: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                organization: user.organization,
-                createdAt: user.createdAt,
-            },
+        return sendResponse(res, 200, {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            organization: user.organization,
+            createdAt: user.createdAt,
         });
     } catch (error) {
         next(error);

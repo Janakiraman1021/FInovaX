@@ -60,6 +60,10 @@ const auditLogSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+        requestId: {
+            type: String,
+            index: true,
+        },
     },
     {
         timestamps: true,

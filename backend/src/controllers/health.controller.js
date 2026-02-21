@@ -36,9 +36,13 @@ const getHealth = async (req, res) => {
 
     // 2. Check Blockchain (Ethereum Sepolia)
     try {
-        const provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
-        const network = await provider.getNetwork();
-        healthStatus.dependencies.blockchain = network ? 'HEALTHY' : 'DEGRADED';
+        if (!process.env.SEPOLIA_RPC_URL) {
+            healthStatus.dependencies.blockchain = 'CONFIG_MISSING';
+        } else {
+            const provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
+            const network = await provider.getNetwork();
+            healthStatus.dependencies.blockchain = network ? 'HEALTHY' : 'DEGRADED';
+        }
     } catch (err) {
         healthStatus.dependencies.blockchain = 'UNAVAILABLE';
     }

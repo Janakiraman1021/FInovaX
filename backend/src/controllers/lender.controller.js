@@ -2,6 +2,7 @@ const Invoice = require('../models/Invoice');
 const AppError = require('../utils/AppError');
 const { verifyInvoiceOnChain, markInvoiceFinancedOnChain, registerReceivableOnChain, verifyReceivableOnChain } = require('../services/blockchain.service');
 const { createAuditLog } = require('../services/audit.service');
+const { sendResponse } = require('../utils/response');
 
 /**
  * GET /api/lender/verify/:invoiceId
@@ -75,28 +76,26 @@ const verifyInvoice = async (req, res, next) => {
                 onChainStatus
             },
             ipAddress: req.ip,
+            requestId: req.requestId,
         });
 
-        res.json({
-            success: true,
-            data: {
-                invoice: {
-                    invoiceId: invoice.invoiceId,
-                    amount: invoice.amount,
-                    currency: invoice.currency,
-                    status: invoice.status,
-                    invoiceHash: invoice.invoiceHash,
-                    financedAt: invoice.financedAt,
-                },
-                verification: {
-                    status: verificationLabel,
-                    valid: !isFinanced,
-                    duplicate: isFinanced,
-                    financed: isFinanced,
-                    registeredOnChain: onChainStatus ? onChainStatus.registered : false
-                },
-                canFinance,
+        return sendResponse(res, 200, {
+            invoice: {
+                invoiceId: invoice.invoiceId,
+                amount: invoice.amount,
+                currency: invoice.currency,
+                status: invoice.status,
+                invoiceHash: invoice.invoiceHash,
+                financedAt: invoice.financedAt,
             },
+            verification: {
+                status: verificationLabel,
+                valid: !isFinanced,
+                duplicate: isFinanced,
+                financed: isFinanced,
+                registeredOnChain: onChainStatus ? onChainStatus.registered : false
+            },
+            canFinance,
         });
     } catch (error) {
         next(error);
@@ -120,10 +119,10 @@ const financeInvoice = async (req, res, next) => {
 
         // Block duplicate financing (Document level)
         if (invoice.status === 'FINANCED') {
-            return next(new AppError('This invoice document has already been financed', 409));
+            return next(new AppError('This invoice document has already been financed', 409, 'INVOICE_ALREADY_FINANCED'));
         }
         if (invoice.status === 'BLOCKED') {
-            return next(new AppError('This invoice is BLOCKED because another document for the same receivable has been financed', 409));
+            return next(new AppError('This invoice is BLOCKED due to duplicate obligation financing', 409, 'RECEIVABLE_ALREADY_FINANCED'));
         }
 
         // Block duplicate financing (Receivable level)
@@ -132,7 +131,7 @@ const financeInvoice = async (req, res, next) => {
             status: 'FINANCED'
         });
         if (existingFinanced) {
-            return next(new AppError('RECEIVABLE_ALREADY_FINANCED: The business obligation for this invoice has already been financed via another document', 409));
+            return next(new AppError('The business obligation for this invoice has already been financed', 409, 'RECEIVABLE_ALREADY_FINANCED'));
         }
 
         // Check on-chain status
@@ -142,10 +141,10 @@ const financeInvoice = async (req, res, next) => {
         ]);
 
         if (!onChainStatus || !onChainStatus.registered) {
-            return next(new AppError('Invoice must be registered on the blockchain before financing', 422));
+            return next(new AppError('Invoice must be registered on the blockchain before financing', 422, 'UNREGISTERED_INVOICE'));
         }
         if (onChainStatus.financed || (onChainReceivableStatus && onChainReceivableStatus.financed)) {
-            return next(new AppError('RECEIVABLE_ALREADY_FINANCED: This obligation is already marked as financed on the blockchain', 409));
+            return next(new AppError('This obligation is already marked as financed on the blockchain', 409, 'RECEIVABLE_ALREADY_FINANCED'));
         }
 
         // Mark on-chain
@@ -158,30 +157,35 @@ const financeInvoice = async (req, res, next) => {
                 registerReceivableOnChain(invoice.receivableFingerprint)
             ]);
         } catch (bcError) {
-            console.warn('Blockchain finance marking failed:', bcError.message);
-            return next(new AppError(`Blockchain finance marking failed: ${bcError.message}`, 500));
+            console.error('Blockchain finance marking failed:', bcError.message);
+            return next(new AppError(`Blockchain transaction failed: ${bcError.message}`, 500, 'BLOCKCHAIN_TX_FAILED'));
         }
 
-        // Update DB — mark this document as FINANCED
-        invoice.status = 'FINANCED';
-        invoice.financedBy = req.user.id;
-        invoice.financedAt = new Date();
-        invoice.financeTxHash = docBlockchainResult?.txHash || null;
-        await invoice.save();
+        try {
+            invoice.status = 'FINANCED';
+            invoice.financedBy = req.user.id;
+            invoice.financedAt = new Date();
+            invoice.financeTxHash = docBlockchainResult?.txHash || null;
+            await invoice.save();
 
-        // Mark ALL OTHER invoices with same receivableFingerprint as BLOCKED
-        await Invoice.updateMany(
-            {
-                receivableFingerprint: invoice.receivableFingerprint,
-                _id: { $ne: invoice._id }
-            },
-            {
-                $set: {
-                    status: 'BLOCKED',
-                    financeTxHash: receivableBlockchainResult?.txHash || null
+            // Mark ALL OTHER invoices with same receivableFingerprint as BLOCKED
+            await Invoice.updateMany(
+                {
+                    receivableFingerprint: invoice.receivableFingerprint,
+                    _id: { $ne: invoice._id }
+                },
+                {
+                    $set: {
+                        status: 'BLOCKED',
+                        financeTxHash: receivableBlockchainResult?.txHash || null
+                    }
                 }
-            }
-        );
+            );
+        } catch (dbError) {
+            console.error(`[CRITICAL INCONSISTENCY] Blockchain success (${docBlockchainResult?.txHash}), but DB update failed:`, dbError.message);
+            // In a real bank app, this would trigger an alert or a compensation logic
+            return next(new AppError('Blockchain transaction completed, but local database update failed. Please contact support.', 500, 'DATABASE_SYNC_ERROR'));
+        }
 
         await createAuditLog({
             action: 'RECEIVABLE_FINANCED',
@@ -194,6 +198,7 @@ const financeInvoice = async (req, res, next) => {
                 receivableFingerprint: invoice.receivableFingerprint,
             },
             ipAddress: req.ip,
+            requestId: req.requestId,
         });
 
         await createAuditLog({
@@ -208,23 +213,19 @@ const financeInvoice = async (req, res, next) => {
                 invoiceHash: invoice.invoiceHash,
             },
             ipAddress: req.ip,
+            requestId: req.requestId,
         });
 
-        res.json({
-            success: true,
-            message: 'Invoice financed successfully',
-            data: {
-                invoice: {
-                    id: invoice._id,
-                    invoiceId: invoice.invoiceId,
-                    amount: invoice.amount,
-                    status: invoice.status,
-                    financedBy: req.user.id,
-                    financedAt: invoice.financedAt,
-                    financeTxHash: invoice.financeTxHash,
-                },
+        return sendResponse(res, 200, {
+            invoice: {
+                invoiceId: invoice.invoiceId,
+                amount: invoice.amount,
+                status: invoice.status,
+                financedBy: req.user.id,
+                financedAt: invoice.financedAt,
+                financeTxHash: invoice.financeTxHash,
             },
-        });
+        }, 'Invoice financed successfully');
     } catch (error) {
         next(error);
     }

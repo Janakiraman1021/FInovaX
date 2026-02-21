@@ -11,9 +11,13 @@ const blockchainRoutes = require('./routes/blockchain.routes');
 const lenderRoutes = require('./routes/lender.routes');
 const auditRoutes = require('./routes/audit.routes');
 
+const requestIdMiddleware = require('./middleware/requestId');
+const v1Routes = require('./routes/v1.routes');
+
 const app = express();
 
-// --------------- Security Middleware ---------------
+// --------------- Global Middleware ---------------
+app.use(requestIdMiddleware);
 app.use(helmet());
 app.use(cors());
 app.use(
@@ -22,7 +26,11 @@ app.use(
         max: parseInt(process.env.RATE_LIMIT_MAX) || 100,
         standardHeaders: true,
         legacyHeaders: false,
-        message: { success: false, message: 'Too many requests, please try again later.' },
+        message: {
+            success: false,
+            message: 'Too many requests, please try again later.',
+            errorCode: 'RATE_LIMIT_EXCEEDED'
+        },
     })
 );
 
@@ -35,17 +43,20 @@ if (process.env.NODE_ENV !== 'test') {
     app.use(morgan('combined'));
 }
 
-// --------------- Health Check ---------------
-app.get('/api/health', (_req, res) => {
-    res.json({ success: true, message: 'FinTrust API is running', timestamp: new Date().toISOString() });
-});
-
 // --------------- API Routes ---------------
-app.use('/auth', authRoutes);
-app.use('/invoices', invoiceRoutes);
-app.use('/blockchain', blockchainRoutes);
-app.use('/lender', lenderRoutes);
-app.use('/audit', auditRoutes);
+
+// Versioned routes (v1)
+app.use('/api/v1', v1Routes);
+
+// Backward Compatibility Routes
+app.use('/auth', v1Routes);
+app.use('/invoices', v1Routes);
+app.use('/blockchain', v1Routes);
+app.use('/lender', v1Routes);
+app.use('/audit', v1Routes);
+
+// General Health (Redirecting to versioned health)
+app.get('/health', (_req, res) => res.redirect('/api/v1/health'));
 
 // --------------- 404 Handler ---------------
 app.use((_req, res) => {

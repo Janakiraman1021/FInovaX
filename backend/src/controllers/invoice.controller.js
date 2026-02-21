@@ -5,6 +5,7 @@ const AppError = require('../utils/AppError');
 const { hashBuffer, generateReceivableFingerprint } = require('../utils/hash');
 const { uploadToIPFS } = require('../services/ipfs.service');
 const { createAuditLog } = require('../services/audit.service');
+const { sendResponse } = require('../utils/response');
 
 // Multer config — store in memory for hashing / IPFS upload
 const upload = multer({
@@ -50,7 +51,7 @@ const createInvoice = async (req, res, next) => {
         // 2. Check for duplicate hash in DB
         const existingByHash = await Invoice.findOne({ invoiceHash });
         if (existingByHash) {
-            return next(new AppError('DUPLICATE_FILE_HASH: An invoice with this exact file already exists', 409));
+            return next(new AppError('An invoice with this exact file already exists', 409, 'DUPLICATE_FILE_HASH'));
         }
 
         // 3. Generate Receivable Fingerprint
@@ -68,7 +69,7 @@ const createInvoice = async (req, res, next) => {
             status: 'FINANCED'
         });
         if (financedReceivable) {
-            return next(new AppError('RECEIVABLE_ALREADY_FINANCED: This business obligation has already been financed', 409));
+            return next(new AppError('This business obligation has already been financed', 409, 'RECEIVABLE_ALREADY_FINANCED'));
         }
 
         // 5. Upload to IPFS
@@ -106,6 +107,7 @@ const createInvoice = async (req, res, next) => {
                 ipfsCID: ipfsResult.cid
             },
             ipAddress: req.ip,
+            requestId: req.requestId,
         });
 
         // 8. Log receivable registration (internal audit)
@@ -116,31 +118,28 @@ const createInvoice = async (req, res, next) => {
             receivableFingerprint: invoice.receivableFingerprint,
             details: { receivableFingerprint },
             ipAddress: req.ip,
+            requestId: req.requestId,
         });
 
-        res.status(201).json({
-            success: true,
-            message: 'Invoice uploaded securely. Pending blockchain verification by lender.',
-            data: {
-                invoice: {
-                    invoiceId: invoice.invoiceId,
-                    invoiceHash: invoice.invoiceHash,
-                    receivableFingerprint: invoice.receivableFingerprint,
-                    ipfsCID: invoice.ipfsCID,
-                    uploadedBy: invoice.uploadedBy,
-                    status: invoice.status,
-                    amount: invoice.amount,
-                    currency: invoice.currency,
-                    createdAt: invoice.createdAt,
-                },
+        return sendResponse(res, 201, {
+            invoice: {
+                invoiceId: invoice.invoiceId,
+                invoiceHash: invoice.invoiceHash,
+                receivableFingerprint: invoice.receivableFingerprint,
+                ipfsCID: invoice.ipfsCID,
+                uploadedBy: invoice.uploadedBy,
+                status: invoice.status,
+                amount: invoice.amount,
+                currency: invoice.currency,
+                createdAt: invoice.createdAt,
             },
-        });
+        }, 'Invoice uploaded securely. Pending blockchain verification by lender.');
     } catch (error) {
         if (error.name === 'ValidationError') {
             return next(new AppError(Object.values(error.errors).map(val => val.message).join(', '), 400));
         }
         if (error.code === 11000) {
-            return next(new AppError('DUPLICATE_RECEIVABLE: This business obligation metadata has already been uploaded', 409));
+            return next(new AppError('This business obligation metadata has already been uploaded', 409, 'DUPLICATE_RECEIVABLE'));
         }
         next(error);
     }
@@ -171,16 +170,13 @@ const getMyInvoices = async (req, res, next) => {
             Invoice.countDocuments(filter),
         ]);
 
-        res.json({
-            success: true,
-            data: {
-                invoices,
-                pagination: {
-                    total,
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    totalPages: Math.ceil(total / parseInt(limit)),
-                },
+        return sendResponse(res, 200, {
+            invoices,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / parseInt(limit)),
             },
         });
     } catch (error) {
