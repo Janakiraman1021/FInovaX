@@ -18,7 +18,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" className="dark">
-            <body className={`${inter.className} bg-galaxy-void text-foreground min-h-screen`}>
+            <body className={`${inter.className} min-h-screen`} style={{ background: 'var(--mg-base)', color: 'var(--mg-silver)' }}>
                 <AuthProvider>
                     {children}
                     <Toaster

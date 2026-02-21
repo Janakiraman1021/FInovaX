@@ -1,190 +1,179 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { mockStats, mockAuditTimeline, AuditEvent } from "@/lib/mock/mockStats";
 import { motion } from "framer-motion";
-import { ShieldCheck, AlertTriangle, Users, FileCheck, Activity, History, TrendingUp, Fingerprint, Radio } from "lucide-react";
+import { ShieldCheck, AlertTriangle, Users, FileCheck, Activity,
+         History, TrendingUp, Radio, CheckCircle, XCircle, Info } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function AuditorDashboard() {
-    const [stats, setStats]     = useState(mockStats);
+    const [stats,    setStats]    = useState(mockStats);
     const [timeline, setTimeline] = useState<AuditEvent[]>([]);
 
     useEffect(() => {
-        const fetchData = async () => {
-            const s = await api.audit.getStats();
-            const t = await api.audit.getTimeline();
+        const fetch = async () => {
+            const [s, t] = await Promise.all([api.audit.getStats(), api.audit.getTimeline()]);
             setStats(s);
             setTimeline(t);
         };
-        fetchData();
+        fetch();
     }, []);
 
     const statCards = [
-        { label: "Total Financing Volume", value: formatCurrency(stats.totalVolume),     icon: TrendingUp,   from: "#10b981", to: "#06b6d4", glow: "shadow-[0_0_18px_rgba(16,185,129,0.40)]" },
-        { label: "Fraud Attempts Blocked", value: stats.fraudAttemptsBlocked,            icon: AlertTriangle, from: "#ef4444", to: "#ec4899", glow: "shadow-[0_0_18px_rgba(239,68,68,0.45)]" },
-        { label: "Active Counterparties",  value: stats.activeMSMEs,                     icon: Users,         from: "#7c3aed", to: "#a78bfa", glow: "shadow-galaxy-sm"                      },
-        { label: "Ledger-Verified Assets", value: stats.totalInvoices,                   icon: FileCheck,     from: "#06b6d4", to: "#6366f1", glow: "shadow-cyan-glow"                      },
+        { label: "Total Financing Volume",  value: formatCurrency(stats.totalVolume),    icon: TrendingUp,   from: "#4a4e8f", to: "#a490c2" },
+        { label: "Fraud Attempts Blocked",  value: stats.fraudAttemptsBlocked,           icon: AlertTriangle, from: "#ef4444", to: "#f87171" },
+        { label: "Active Counterparties",   value: stats.activeMSMEs,                    icon: Users,         from: "#7c3aed", to: "#a490c2" },
+        { label: "Ledger-Verified Assets",  value: stats.totalInvoices,                  icon: FileCheck,     from: "#4a4e8f", to: "#818cf8" },
     ];
 
-    const eventColors: Record<string, { bg: string; border: string; shadow: string; dot: string }> = {
-        success: { bg: "bg-emerald-500/15", border: "border-emerald-500/30", shadow: "shadow-[0_0_12px_rgba(16,185,129,0.35)]", dot: "bg-emerald-400" },
-        warning: { bg: "bg-red-500/15",     border: "border-red-500/30",     shadow: "shadow-glow-red",                          dot: "bg-red-400"     },
-        info:    { bg: "bg-galaxy-purple/15",border:"border-galaxy-lavender/30", shadow: "shadow-galaxy-sm",                     dot: "bg-galaxy-lavender" },
+    const eventStyle: Record<string, { border: string; bg: string; icon: typeof CheckCircle; iconClass: string }> = {
+        success: { border: "border-status-success/25",  bg: "bg-status-success/8",  icon: CheckCircle,  iconClass: "text-status-success"  },
+        warning: { border: "border-status-danger/25",   bg: "bg-status-danger/8",   icon: XCircle,      iconClass: "text-status-danger"   },
+        info:    { border: "border-mg-lavender/25",      bg: "bg-mg-cosmic/10",      icon: Info,         iconClass: "text-mg-lavender"     },
     };
 
-    return (
-        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            {/* Header */}
-            <div className="flex justify-between items-center">
-                <div>
-                    <div className="stat-pill mb-3" style={{ color: "#ec4899", borderColor: "rgba(236,72,153,0.3)", background: "rgba(236,72,153,0.1)" }}>
-                        Regulator View
-                    </div>
-                    <h1 className="text-4xl font-black text-white tracking-tighter mb-2">
-                        Audit <span className="text-galaxy-gradient">Surveillance</span>
-                    </h1>
-                    <p className="text-white/35 text-sm">Real-time oversight of the invoice financing ecosystem</p>
-                </div>
-                <div className="flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-emerald-500/25">
-                    <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                    <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-widest">System Operational</span>
-                </div>
-            </div>
+    const systemChecks = [
+        { label: "Oracle Consensus",     pct: 98, color: "#34d399" },
+        { label: "zkProof Validation",   pct: 94, color: "#a490c2" },
+        { label: "IPFS Node Health",     pct: 99, color: "#4a4e8f" },
+        { label: "Smart Contract Uptime",pct: 100, color: "#818cf8" },
+    ];
 
-            {/* Stat cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {statCards.map((card, i) => (
+    return (
+        <div className="space-y-8">
+            {/* ── Header ── */}
+            <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center justify-between"
+            >
+                <div>
+                    <p className="mg-label mb-1.5">Regulator View</p>
+                    <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
+                        Audit <span className="mg-accent-text">Surveillance</span>
+                    </h1>
+                    <p className="text-sm text-mg-muted mt-1">Real-time oversight of the invoice financing ecosystem</p>
+                </div>
+                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-mg-card border border-status-success/25">
+                    <Radio className="w-3 h-3 text-status-success animate-pulse" />
+                    <span className="text-[10px] uppercase font-semibold text-status-success tracking-widest">Systems Operational</span>
+                </div>
+            </motion.div>
+
+            {/* ── Stat cards ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {statCards.map((c, i) => (
                     <motion.div
-                        initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                        key={card.label}
-                        className="galaxy-card rounded-3xl p-6 group relative overflow-hidden"
+                        key={c.label}
+                        initial={{ opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.08 }}
+                        className="mg-stat-card group"
                     >
-                        {/* Hover corner glow */}
-                        <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full blur-[40px] opacity-0 group-hover:opacity-50 transition-opacity duration-500"
-                            style={{ background: card.from }} />
-                        <div
-                            className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform ${card.glow}`}
-                            style={{ background: `linear-gradient(135deg, ${card.from}, ${card.to})` }}
-                        >
-                            <card.icon className="w-6 h-6 text-white" />
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-105"
+                            style={{ background: `linear-gradient(135deg, ${c.from}, ${c.to})`, boxShadow: `0 0 14px ${c.from}45` }}>
+                            <c.icon className="w-5 h-5 text-white" />
                         </div>
-                        <p className="text-white/35 text-[10px] uppercase font-bold tracking-widest mb-1.5">{card.label}</p>
-                        <h3 className="text-2xl font-black text-white tracking-tight">{card.value}</h3>
+                        <p className="mg-label mb-1.5">{c.label}</p>
+                        <p className="text-2xl font-bold text-mg-silver">{c.value}</p>
                     </motion.div>
                 ))}
             </div>
 
-            {/* Timeline + integrity panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* ── Timeline + System Health ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
                 {/* Live Audit Trail */}
-                <div className="lg:col-span-2">
-                    <div className="galaxy-card rounded-3xl p-8 scan-container relative overflow-hidden">
-                        <div className="flex items-center gap-4 mb-8">
-                            <div className="w-10 h-10 rounded-xl bg-galaxy-purple/15 border border-galaxy-lavender/25 flex items-center justify-center">
-                                <History className="w-5 h-5 text-galaxy-lavender" />
+                <div className="lg:col-span-2 mg-card rounded-2xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-mg-lavender/10 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                                style={{ background: "rgba(74,78,143,0.22)", border: "1px solid rgba(164,144,194,0.18)" }}>
+                                <History className="w-4 h-4 text-mg-lavender" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-white">Live Audit Trail</h3>
-                                <div className="text-[10px] text-white/30 font-mono">{timeline.length} blockchain events</div>
-                            </div>
-                            <div className="ml-auto flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
-                                <span className="text-[10px] text-emerald-400/80 uppercase font-bold">Live</span>
+                                <p className="font-semibold text-mg-silver text-sm">Live Audit Trail</p>
+                                <p className="text-[10px] text-mg-dim font-mono">{timeline.length} blockchain events</p>
                             </div>
                         </div>
-
-                        <div className="relative space-y-5">
-                            {/* Connector line */}
-                            <div className="absolute left-[18px] top-2 bottom-2 w-px"
-                                style={{ background: "linear-gradient(180deg, rgba(167,139,250,0.3), rgba(236,72,153,0.2), transparent)" }} />
-
-                            {timeline.map((event: AuditEvent, i: number) => {
-                                const ec = eventColors[event.status] ?? eventColors.info;
-                                return (
-                                    <motion.div
-                                        initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + i * 0.15 }}
-                                        key={event.id}
-                                        className="relative pl-12"
-                                    >
-                                        {/* Dot */}
-                                        <div className={`absolute left-0 top-1 w-9 h-9 rounded-full border-2 border-galaxy-void flex items-center justify-center z-10 ${ec.bg} ${ec.border} ${ec.shadow}`}>
-                                            <Activity className={`w-3.5 h-3.5 ${ec.dot === "bg-emerald-400" ? "text-emerald-400" : ec.dot === "bg-red-400" ? "text-red-400" : "text-galaxy-lavender"}`} />
-                                        </div>
-                                        <div className={`p-4 rounded-2xl ${ec.bg} border ${ec.border} ${ec.shadow}`}>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs font-bold text-white uppercase tracking-tight">{event.event}</span>
-                                                <span className="text-[9px] text-white/30 uppercase font-bold">{event.time}</span>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })}
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+                            <span className="text-[10px] text-status-success uppercase font-semibold tracking-widest">Live</span>
                         </div>
+                    </div>
+
+                    <div className="p-5 space-y-3 max-h-[380px] overflow-y-auto">
+                        {timeline.length === 0 ? (
+                            <div className="py-12 text-center text-mg-dim text-sm italic">Loading events…</div>
+                        ) : timeline.map((ev: AuditEvent, i: number) => {
+                            const s = eventStyle[ev.status] ?? eventStyle.info;
+                            const IconComp = s.icon;
+                            return (
+                                <motion.div
+                                    key={ev.id}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.3 + i * 0.07 }}
+                                    className={`flex items-start gap-3 p-4 rounded-xl border ${s.border} ${s.bg}`}
+                                >
+                                    <div className="shrink-0 mt-0.5">
+                                        <IconComp className={`w-4 h-4 ${s.iconClass}`} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-mg-silver">{ev.event}</p>
+                                    </div>
+                                    <span className="shrink-0 text-[10px] text-mg-dim font-mono">{ev.time}</span>
+                                </motion.div>
+                            );
+                        })}
                     </div>
                 </div>
 
-                {/* Cryptographic integrity card */}
-                <div className="space-y-6">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
-                        className="galaxy-card rounded-3xl p-8 relative overflow-hidden"
-                    >
-                        {/* Corner nebula blob */}
-                        <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-40" style={{ background: "rgba(124,58,237,0.4)" }} />
-                        <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full blur-[50px] opacity-30" style={{ background: "rgba(236,72,153,0.3)" }} />
-
-                        <div className="relative">
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-galaxy-purple to-galaxy-pink flex items-center justify-center mb-6 glow-purple galaxy-float mx-auto">
-                                <Fingerprint className="w-7 h-7 text-white" />
-                            </div>
-
-                            <h3 className="text-xl font-bold text-white mb-3 text-center">Cryptographic Integrity</h3>
-                            <p className="text-white/45 text-sm leading-relaxed mb-6 text-center">
-                                Every transaction is cryptographically bonded to its invoice hash.
-                                Any document alteration invalidates the audit trail instantly.
-                            </p>
-
-                            <div className="px-4 py-3 rounded-2xl bg-galaxy-void/80 border border-galaxy-lavender/20 font-mono text-[10px] text-galaxy-lavender/90 break-all leading-relaxed">
-                                CHAIN_VERIFY: 0x82f...a12 � PROVED
-                            </div>
-
-                            <div className="mt-4 flex items-center justify-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
-                                <span className="text-[10px] text-emerald-400 uppercase font-bold tracking-widest">Integrity Confirmed</span>
-                            </div>
+                {/* System Health */}
+                <div className="mg-card rounded-2xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-mg-lavender/10 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                            style={{ background: "rgba(74,78,143,0.22)", border: "1px solid rgba(164,144,194,0.18)" }}>
+                            <Activity className="w-4 h-4 text-mg-lavender" />
                         </div>
-                    </motion.div>
-
-                    {/* System health mini card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-                        className="galaxy-card rounded-2xl p-6"
-                    >
-                        <h4 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-4">System Health</h4>
-                        <div className="space-y-3">
-                            {[
-                                { label: "zkEVM Node",    pct: 98, color: "#10b981" },
-                                { label: "IPFS Gateway",  pct: 100, color: "#06b6d4" },
-                                { label: "Audit Engine",  pct: 97, color: "#7c3aed" },
-                            ].map(item => (
-                                <div key={item.label}>
-                                    <div className="flex justify-between text-[10px] mb-1.5">
-                                        <span className="text-white/45 font-medium">{item.label}</span>
-                                        <span className="font-bold" style={{ color: item.color }}>{item.pct}%</span>
-                                    </div>
-                                    <div className="h-1 rounded-full bg-white/5">
-                                        <motion.div
-                                            initial={{ width: 0 }} animate={{ width: `${item.pct}%` }} transition={{ delay: 0.8, duration: 1 }}
-                                            className="h-full rounded-full"
-                                            style={{ background: `linear-gradient(90deg, ${item.color}88, ${item.color})` }}
-                                        />
-                                    </div>
+                        <p className="font-semibold text-mg-silver text-sm">System Health</p>
+                    </div>
+                    <div className="p-5 space-y-5">
+                        {systemChecks.map((c, i) => (
+                            <motion.div
+                                key={c.label}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.4 + i * 0.1 }}
+                            >
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <span className="text-xs font-medium text-mg-muted">{c.label}</span>
+                                    <span className="text-xs font-bold" style={{ color: c.color }}>{c.pct}%</span>
                                 </div>
-                            ))}
+                                <div className="h-1.5 rounded-full overflow-hidden bg-mg-elevated">
+                                    <motion.div
+                                        className="h-full rounded-full"
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${c.pct}%` }}
+                                        transition={{ delay: 0.5 + i * 0.1, duration: 0.8, ease: "easeOut" }}
+                                        style={{ background: `linear-gradient(90deg, ${c.color}90, ${c.color})` }}
+                                    />
+                                </div>
+                            </motion.div>
+                        ))}
+
+                        <div className="mt-6 pt-4 border-t border-mg-lavender/10">
+                            <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-status-success/8 border border-status-success/20">
+                                <ShieldCheck className="w-5 h-5 text-status-success shrink-0" />
+                                <div>
+                                    <p className="text-xs font-semibold text-mg-silver">Cryptographic Integrity</p>
+                                    <p className="text-[10px] text-mg-muted">All hashes verified — no tampering detected</p>
+                                </div>
+                            </div>
                         </div>
-                    </motion.div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -1,181 +1,188 @@
-"use client";
+﻿"use client";
 
 import { useAuth } from "@/context/AuthContext";
 import { UserRole } from "@/lib/mock/mockUsers";
-import { Shield, Banknote, Landmark, Eye } from "lucide-react";
-import { motion } from "framer-motion";
+import { Shield, Banknote, Landmark, Eye, ArrowRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+
+const roles = [
+    {
+        id: "msme" as UserRole,
+        title: "MSME Portal",
+        desc: "Upload, verify and finance your trade receivables on-chain.",
+        icon: Banknote,
+        accentFrom: "#4a4e8f",
+        accentTo:   "#a490c2",
+        border:  "hover:border-mg-lavender/40",
+        textActive: "text-mg-lavender",
+        bgActive:   "rgba(74,78,143,0.15)",
+    },
+    {
+        id: "lender" as UserRole,
+        title: "Lender Console",
+        desc: "Verify hash integrity and disburse capital to vetted MSMEs.",
+        icon: Landmark,
+        accentFrom: "#10b981",
+        accentTo:   "#34d399",
+        border:  "hover:border-status-success/40",
+        textActive: "text-status-success",
+        bgActive:   "rgba(52,211,153,0.10)",
+    },
+    {
+        id: "auditor" as UserRole,
+        title: "Regulator View",
+        desc: "Real-time surveillance and audit trail of the full ecosystem.",
+        icon: Eye,
+        accentFrom: "#7c3aed",
+        accentTo:   "#a490c2",
+        border:  "hover:border-violet-400/40",
+        textActive: "text-violet-300",
+        bgActive:   "rgba(124,58,237,0.12)",
+    },
+];
 
 export default function LoginPage() {
     const { login } = useAuth();
     const [connecting, setConnecting] = useState<UserRole | null>(null);
+    const [selected, setSelected]     = useState<UserRole | null>(null);
 
     const handleLogin = (role: UserRole) => {
+        setSelected(role);
         setConnecting(role);
-        setTimeout(() => { login(role); }, 1600);
+        setTimeout(() => login(role), 1400);
     };
 
-    const roles = [
-        {
-            id: "msme",
-            title: "MSME Portal",
-            desc: "Upload and verify invoices for quantum-speed financing",
-            icon: Banknote,
-            gradFrom: "#7c3aed",
-            gradTo:   "#06b6d4",
-            borderHover: "hover:border-galaxy-lavender/50",
-            glowClass: "glow-purple",
-            label: "MSME",
-        },
-        {
-            id: "lender",
-            title: "Lender Console",
-            desc: "Verify cryptographic hash integrity and disburse capital",
-            icon: Landmark,
-            gradFrom: "#10b981",
-            gradTo:   "#06b6d4",
-            borderHover: "hover:border-emerald-500/50",
-            glowClass: "glow-cyan",
-            label: "LENDER",
-        },
-        {
-            id: "auditor",
-            title: "Regulator View",
-            desc: "Real-time nebula surveillance of ecosystem health",
-            icon: Eye,
-            gradFrom: "#ec4899",
-            gradTo:   "#a78bfa",
-            borderHover: "hover:border-galaxy-pink/50",
-            glowClass: "glow-pink",
-            label: "AUDITOR",
-        },
-    ];
-
     return (
-        <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
-            {/* Nebula blobs */}
-            <div className="absolute top-1/4 left-1/5 w-96 h-96 rounded-full blur-[140px] animate-pulse pointer-events-none" style={{ background: "rgba(124,58,237,0.18)" }} />
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full blur-[140px] animate-pulse pointer-events-none" style={{ animation: "pulse 3s ease-in-out infinite", animationDelay: "1s", background: "rgba(236,72,153,0.12)" }} />
-            <div className="absolute top-1/2 right-0 w-72 h-72 rounded-full blur-[100px] pointer-events-none" style={{ background: "rgba(6,182,212,0.08)" }} />
+        <div className="min-h-screen flex items-center justify-center px-6 py-12 relative overflow-hidden"
+            style={{ background: "var(--mg-base)" }}>
 
-            {/* Hex grid bg */}
-            <div className="absolute inset-0 pointer-events-none opacity-5">
-                <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <pattern id="hex-login" x="0" y="0" width="60" height="52" patternUnits="userSpaceOnUse">
-                            <polygon points="30,2 56,16 56,36 30,50 4,36 4,16" fill="none" stroke="rgba(167,139,250,0.8)" strokeWidth="0.5" />
-                        </pattern>
-                    </defs>
-                    <rect width="100%" height="100%" fill="url(#hex-login)" />
-                </svg>
-            </div>
+            {/* Ambient glows */}
+            <div className="pointer-events-none absolute top-1/4 left-1/4 w-[400px] h-[400px] rounded-full blur-[130px] opacity-20"
+                style={{ background: "radial-gradient(ellipse, rgba(74,78,143,0.60) 0%, transparent 70%)" }} />
+            <div className="pointer-events-none absolute bottom-1/3 right-1/4 w-[300px] h-[300px] rounded-full blur-[100px] opacity-15"
+                style={{ background: "radial-gradient(ellipse, rgba(164,144,194,0.40) 0%, transparent 70%)" }} />
 
-            <div className="max-w-5xl w-full z-10">
-                {/* Header */}
-                <div className="text-center mb-16">
+            <div className="relative z-10 w-full max-w-4xl">
+
+                {/* ── Header ── */}
+                <div className="text-center mb-14">
                     <motion.div
-                        initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                        className="relative inline-flex items-center justify-center w-24 h-24 mb-10"
+                        initial={{ scale: 0.7, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: "spring", stiffness: 220, damping: 22 }}
+                        className="inline-flex w-16 h-16 rounded-2xl items-center justify-center mb-6"
+                        style={{
+                            background: "linear-gradient(135deg, #4a4e8f 0%, #a490c2 100%)",
+                            boxShadow: "0 0 32px rgba(74,78,143,0.45), 0 0 8px rgba(164,144,194,0.20)"
+                        }}
                     >
-                        {/* Orbit rings */}
-                        <div className="absolute w-24 h-24 rounded-full border border-galaxy-lavender/25 orbit-ring" />
-                        <div className="absolute w-16 h-16 rounded-full border border-galaxy-pink/20" style={{ animation: "orbitSpin 5s linear infinite reverse" }} />
-                        {/* Core */}
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-galaxy-purple to-galaxy-pink flex items-center justify-center glow-purple rotate-12">
-                            <Shield className="text-white w-7 h-7" />
-                        </div>
+                        <Shield className="w-8 h-8 text-white" />
                     </motion.div>
 
                     <motion.h1
-                        initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-                        className="text-7xl font-black text-galaxy-gradient tracking-tighter mb-3"
-                    >
-                        FINOVAX
+                        initial={{ y: 16, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.15 }}
+                        className="text-5xl font-bold tracking-tight mb-3 mg-gradient-text">
+                        FInovaX
                     </motion.h1>
 
                     <motion.p
-                        initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
-                        className="text-white/40 text-lg font-medium tracking-tight"
-                    >
-                        Midnight Galaxy � Hybrid Audit Architecture
+                        initial={{ y: 12, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.22 }}
+                        className="text-mg-muted text-base mb-5">
+                        Midnight Galaxy · Hybrid Blockchain Audit Architecture
                     </motion.p>
 
-                    <motion.div
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-                        className="stat-pill mx-auto mt-5"
+                    <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.35 }}
+                        className="mg-pill"
                     >
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
                         All Systems Operational
-                    </motion.div>
+                    </motion.span>
                 </div>
 
-                {/* Role Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {roles.map((role, i) => (
-                        <motion.button
-                            key={role.id}
-                            initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.45 + i * 0.12 }}
-                            onClick={() => handleLogin(role.id as UserRole)}
-                            disabled={!!connecting}
-                            className={cn(
-                                "group relative p-8 rounded-[32px] glass-dark text-left transition-all duration-500 border",
-                                "border-galaxy-lavender/15",
-                                role.borderHover,
-                                "hover:scale-[1.03] hover:shadow-galaxy-md",
-                                connecting === role.id && "scale-[1.03]"
-                            )}
-                        >
-                            {/* Background glow on hover */}
-                            <div className="absolute inset-0 rounded-[32px] opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                                style={{ background: `radial-gradient(ellipse at top left, ${role.gradFrom}18 0%, transparent 60%)` }} />
-
-                            {/* Connecting overlay */}
-                            {connecting === role.id && (
-                                <motion.div
-                                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                                    className="absolute inset-0 rounded-[32px] flex items-center justify-center z-20"
-                                    style={{ background: "rgba(5,4,20,0.85)", backdropFilter: "blur(8px)" }}
-                                >
-                                    <div className="flex flex-col items-center gap-3">
-                                        <div className="relative w-12 h-12">
-                                            <div className="absolute inset-0 rounded-full border-2 border-galaxy-lavender/20" />
-                                            <div className="absolute inset-0 rounded-full border-2 border-t-galaxy-lavender border-transparent animate-spin" />
-                                        </div>
-                                        <span className="text-galaxy-lavender text-xs font-bold uppercase tracking-widest">Authenticating...</span>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {/* Icon */}
-                            <div
-                                className={cn("w-16 h-16 rounded-2xl mb-8 flex items-center justify-center transition-all duration-300 group-hover:scale-110", role.glowClass)}
-                                style={{ background: `linear-gradient(135deg, ${role.gradFrom}, ${role.gradTo})` }}
-                            >
-                                <role.icon className="text-white w-8 h-8" />
-                            </div>
-
-                            {/* Label pill */}
-                            <div className="stat-pill mb-4" style={{ color: role.gradFrom, borderColor: `${role.gradFrom}40`, background: `${role.gradFrom}15` }}>
-                                {role.label}
-                            </div>
-
-                            <h3 className="text-xl font-bold text-white mb-3 tracking-tight">{role.title}</h3>
-                            <p className="text-white/40 text-sm leading-relaxed">{role.desc}</p>
-
-                            {/* Bottom glow line */}
-                            <div className="mt-8 h-px rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                                style={{ background: `linear-gradient(90deg, ${role.gradFrom}, ${role.gradTo}, transparent)` }} />
-                        </motion.button>
-                    ))}
-                </div>
-
-                {/* Footer note */}
+                {/* ── Role selection title ── */}
                 <motion.p
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}
-                    className="text-center text-white/20 text-xs font-bold uppercase tracking-[0.2em] mt-12"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="text-center mg-label mb-6"
                 >
-                    Demo Mode � Select any role to enter the terminal
+                    Select your access role to continue
+                </motion.p>
+
+                {/* ── Role cards ── */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {roles.map((r, i) => {
+                        const isConnecting = connecting === r.id;
+                        const isSelected   = selected === r.id;
+                        return (
+                            <motion.button
+                                key={r.id}
+                                initial={{ y: 24, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                transition={{ delay: 0.40 + i * 0.10 }}
+                                onClick={() => !connecting && handleLogin(r.id)}
+                                disabled={!!connecting}
+                                className={cn(
+                                    "group relative text-left rounded-2xl p-6 border transition-all duration-200",
+                                    "bg-mg-card",
+                                    isSelected
+                                        ? "border-mg-lavender/35 shadow-mg-md"
+                                        : cn("border-mg-lavender/12", r.border),
+                                    !connecting && "hover:-translate-y-0.5 hover:shadow-mg-md cursor-pointer",
+                                    connecting && !isSelected && "opacity-40 cursor-not-allowed",
+                                )}
+                                style={isSelected ? { background: r.bgActive } : undefined}
+                            >
+                                {/* Top gradient bar */}
+                                <div className="absolute inset-x-0 top-0 h-px rounded-t-2xl"
+                                    style={{ background: `linear-gradient(90deg, transparent, ${r.accentFrom}60, ${r.accentTo}50, transparent)` }} />
+
+                                {/* Icon */}
+                                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5"
+                                    style={{
+                                        background: `linear-gradient(135deg, ${r.accentFrom}30, ${r.accentTo}20)`,
+                                        border: `1px solid ${r.accentFrom}35`,
+                                    }}>
+                                    {isConnecting ? (
+                                        <div className="w-5 h-5 rounded-full border-2 border-mg-dim border-t-mg-lavender animate-spin" />
+                                    ) : (
+                                        <r.icon className={cn("w-5 h-5", r.textActive)} />
+                                    )}
+                                </div>
+
+                                <h3 className={cn("font-semibold text-base mb-1.5", isSelected ? r.textActive : "text-mg-silver")}>
+                                    {r.title}
+                                </h3>
+                                <p className="text-sm text-mg-muted leading-relaxed mb-5">{r.desc}</p>
+
+                                <div className={cn(
+                                    "flex items-center gap-1.5 text-xs font-semibold transition-colors",
+                                    isSelected ? r.textActive : "text-mg-dim group-hover:text-mg-muted"
+                                )}>
+                                    {isConnecting ? "Authenticating..." : "Enter Portal"}
+                                    {!isConnecting && <ArrowRight className="w-3.5 h-3.5" />}
+                                </div>
+                            </motion.button>
+                        );
+                    })}
+                </div>
+
+                {/* ── Footer note ── */}
+                <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.7 }}
+                    className="text-center text-xs text-mg-dim mt-10">
+                    Demo environment · No credentials required · Polygon zkEVM Testnet
                 </motion.p>
             </div>
         </div>

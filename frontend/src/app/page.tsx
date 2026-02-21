@@ -1,51 +1,26 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
-import { Shield, ArrowRight, Lock, PieChart, Zap, Star, Hexagon, GitBranch } from "lucide-react";
+import { Shield, ArrowRight, Lock, PieChart, Zap, GitBranch, CheckCircle } from "lucide-react";
 import Link from "next/link";
 
-/* -- Floating Particle ----------------------- */
-function Particle({ x, y, size, delay, color }: { x: number; y: number; size: number; delay: number; color: string }) {
-    return (
-        <motion.div
-            className="absolute rounded-full pointer-events-none"
-            style={{ left: `${x}%`, top: `${y}%`, width: size, height: size, background: color }}
-            animate={{ y: [0, -40, 0], opacity: [0.2, 0.8, 0.2], scale: [1, 1.4, 1] }}
-            transition={{ duration: 5 + delay, repeat: Infinity, delay, ease: "easeInOut" }}
-        />
-    );
-}
+const features = [
+    { icon: Shield,    title: "Blockchain Verification",  desc: "Every invoice is hashed and sealed on Polygon zkEVM — tamper-proof by design."     },
+    { icon: Lock,      title: "Zero-Knowledge Privacy",   desc: "IPFS-stored documents with cryptographic proofs protect sensitive trade data."       },
+    { icon: PieChart,  title: "Automated Underwriting",   desc: "ML-driven risk models assess creditworthiness in real-time, enabling instant offer."  },
+    { icon: Zap,       title: "Instant Disbursement",     desc: "Smart contracts settle verified invoices in under 60 seconds, no manual approval."   },
+    { icon: GitBranch, title: "Tri-Party Audit Trail",    desc: "MSME, Lender and Regulator each hold a cryptographically-linked record of every event."},
+    { icon: CheckCircle, title: "Regulatory Compliance",  desc: "Designed around RBI and SEBI guidelines with full KYC/AML controls built in."        },
+];
 
-/* -- Hex Grid ------------------------------- */
-function HexGrid() {
-    return (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-10">
-            <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="hex" x="0" y="0" width="60" height="52" patternUnits="userSpaceOnUse">
-                        <polygon points="30,2 56,16 56,36 30,50 4,36 4,16" fill="none" stroke="rgba(167,139,250,0.5)" strokeWidth="0.5" />
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#hex)" />
-            </svg>
-        </div>
-    );
-}
-
-const particles = [
-    { x: 10, y: 20, size: 4, delay: 0,   color: "rgba(167,139,250,0.8)" },
-    { x: 85, y: 15, size: 3, delay: 1.5, color: "rgba(236,72,153,0.7)"  },
-    { x: 60, y: 75, size: 5, delay: 0.8, color: "rgba(6,182,212,0.8)"   },
-    { x: 30, y: 55, size: 3, delay: 2.0, color: "rgba(167,139,250,0.6)" },
-    { x: 75, y: 40, size: 4, delay: 1.2, color: "rgba(139,92,246,0.7)"  },
-    { x: 20, y: 85, size: 3, delay: 0.5, color: "rgba(6,182,212,0.6)"   },
-    { x: 92, y: 68, size: 4, delay: 1.8, color: "rgba(236,72,153,0.6)"  },
-    { x: 48, y: 30, size: 2, delay: 0.3, color: "rgba(255,255,255,0.8)" },
-    { x: 15, y: 45, size: 2, delay: 2.5, color: "rgba(255,255,255,0.6)" },
-    { x: 68, y: 88, size: 3, delay: 1.0, color: "rgba(167,139,250,0.5)" },
+const stats = [
+    { value: "₹2.4B+", label: "Financed to date" },
+    { value: "14,800", label: "Invoices on-chain" },
+    { value: "99.8%",  label: "Fraud detection rate" },
+    { value: "<60s",   label: "Settlement time" },
 ];
 
 export default function LandingPage() {
@@ -57,183 +32,141 @@ export default function LandingPage() {
     }, [isAuthenticated, role, router]);
 
     return (
-        <div className="min-h-screen bg-galaxy-void text-white overflow-hidden">
-
-            {/* Ambient nebula blobs */}
-            <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-galaxy-purple/15 rounded-full blur-[120px] animate-pulse" />
-                <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-galaxy-pink/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1.5s" }} />
-                <div className="absolute bottom-0 left-0 w-[600px] h-[400px] rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "0.8s", background: "rgba(109,40,217,0.12)" }} />
-            </div>
-
-            {/* Nav */}
-            <nav className="relative z-10 flex items-center justify-between px-8 py-6">
-                <div className="flex items-center gap-3">
-                    <div className="relative">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-galaxy-purple to-galaxy-pink flex items-center justify-center glow-purple">
-                            <Shield className="text-white w-5 h-5" />
-                        </div>
-                        <div className="absolute -inset-1 rounded-xl border border-galaxy-lavender/30 animate-pulse" />
+        <div className="min-h-screen text-mg-silver overflow-hidden" style={{ background: "var(--mg-base)" }}>
+            {/* ── Nav bar ── */}
+            <header className="mg-navbar sticky top-0 z-50 h-14 px-8 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ background: "linear-gradient(135deg, #4a4e8f, #a490c2)", boxShadow: "0 0 12px rgba(74,78,143,0.40)" }}>
+                        <Shield className="w-3.5 h-3.5 text-white" />
                     </div>
-                    <span className="text-xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white to-galaxy-lavender">
-                        FINOVAX
+                    <span className="font-bold text-mg-silver tracking-tight">
+                        Fino<span className="text-mg-lavender">vaX</span>
                     </span>
                 </div>
-                <Link href="/login" className="px-6 py-2.5 rounded-full glass border border-galaxy-lavender/30 text-galaxy-lavender text-sm font-bold hover:bg-galaxy-purple/20 transition-all">
-                    Connect Portal
-                </Link>
-            </nav>
-
-            {/* Hero */}
-            <section className="relative z-10 flex flex-col items-center text-center pt-24 pb-40 px-6">
-                <div className="absolute inset-0 pointer-events-none">
-                    {particles.map((p, i) => <Particle key={i} {...p} />)}
+                <div className="flex items-center gap-3">
+                    <Link href="/login" className="text-sm font-medium text-mg-muted hover:text-mg-silver transition-colors">Sign in</Link>
+                    <Link href="/login" className="mg-btn-primary text-sm py-2 px-4 rounded-lg">
+                        Get Started
+                    </Link>
                 </div>
-                <HexGrid />
+            </header>
 
-                {/* Status pill */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }}
-                    className="stat-pill mb-10 glow-purple"
-                >
-                    <span className="w-2 h-2 rounded-full bg-galaxy-lavender animate-ping" />
-                    Quantum Ledger Protocol � Active
-                </motion.div>
+            {/* ── Hero ── */}
+            <section className="relative pt-28 pb-20 px-8 text-center max-w-5xl mx-auto">
+                {/* Ambient glow behind hero */}
+                <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full blur-[120px] opacity-25"
+                    style={{ background: "radial-gradient(ellipse, rgba(74,78,143,0.50) 0%, transparent 70%)" }} />
 
-                {/* Orbit icon */}
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, delay: 0.1 }}
-                    className="relative w-28 h-28 flex items-center justify-center mb-14"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.55 }}
+                    className="relative"
                 >
-                    <div className="absolute w-28 h-28 rounded-full border border-galaxy-lavender/25 orbit-ring" />
-                    <div className="absolute w-20 h-20 rounded-full border border-galaxy-pink/20" style={{ animation: "orbitSpin 6s linear infinite reverse" }} />
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-galaxy-purple via-pink-600/60 to-galaxy-cyan flex items-center justify-center glow-purple shadow-galaxy-md rotate-12">
-                        <Shield className="text-white w-8 h-8" />
+                    <span className="mg-pill mb-6 inline-flex">
+                        <span className="w-1.5 h-1.5 rounded-full bg-mg-lavender animate-pulse" />
+                        Built on Polygon zkEVM · IPFS · Smart Contracts
+                    </span>
+
+                    <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.08] mb-6 text-mg-silver">
+                        Invoice Finance<br />
+                        <span className="mg-gradient-text">Reimagined.</span>
+                    </h1>
+
+                    <p className="text-lg text-mg-muted max-w-2xl mx-auto mb-10 leading-relaxed">
+                        FInovaX connects MSMEs and lenders on a trustless blockchain layer —
+                        reducing fraud, accelerating liquidity, and bringing full transparency to trade finance.
+                    </p>
+
+                    <div className="flex items-center justify-center gap-4 flex-wrap">
+                        <Link href="/login" className="mg-btn-primary gap-2 text-sm">
+                            Launch App
+                            <ArrowRight className="w-4 h-4" />
+                        </Link>
+                        <Link href="#features"
+                            className="mg-btn-ghost border border-mg-lavender/20 text-mg-muted hover:text-mg-silver text-sm px-5 py-2.5 rounded-lg">
+                            Learn more
+                        </Link>
                     </div>
                 </motion.div>
+            </section>
 
-                {/* Headline */}
-                <motion.h1
-                    initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                    className="text-7xl md:text-8xl lg:text-9xl font-black tracking-tighter leading-[0.88] mb-8 max-w-5xl"
-                >
-                    The Future of<br />
-                    <span className="text-galaxy-gradient">Invoice Integrity.</span>
-                </motion.h1>
-
-                {/* Subline */}
-                <motion.p
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-                    className="text-white/45 text-xl max-w-2xl mx-auto mb-14 font-medium leading-relaxed"
-                >
-                    FINOVAX deploys hybrid audit architectures across a distributed quantum ledger
-                    to eliminate double-financing fraud in institutional supply chains.
-                </motion.p>
-
-                {/* CTAs */}
+            {/* ── Stats strip ── */}
+            <section className="max-w-5xl mx-auto px-8 pb-20">
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-                    className="flex flex-col sm:flex-row items-center gap-5"
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                    className="grid grid-cols-2 lg:grid-cols-4 gap-4"
                 >
-                    <Link href="/login" className="group relative px-10 py-5 rounded-full overflow-hidden font-bold text-lg text-white flex items-center gap-3 transition-all">
-                        <span className="absolute inset-0 bg-gradient-to-r from-galaxy-purple via-pink-600/80 to-galaxy-cyan opacity-90 group-hover:opacity-100 transition-opacity" />
-                        <span className="absolute inset-0 border border-galaxy-lavender/30 rounded-full" />
-                        <span className="relative">Enter Terminal</span>
-                        <ArrowRight className="relative group-hover:translate-x-1 transition-transform w-5 h-5" />
-                    </Link>
-                    <button className="px-10 py-5 rounded-full glass border border-galaxy-lavender/25 text-galaxy-lavender font-bold text-lg hover:bg-galaxy-purple/15 hover:border-galaxy-lavender/50 transition-all">
-                        Read Whitepaper
-                    </button>
-                </motion.div>
-
-                {/* Stats */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
-                    className="flex items-center gap-12 mt-20"
-                >
-                    {[
-                        { label: "Invoices Secured", value: "94,210+" },
-                        { label: "Fraud Blocked",    value: "$2.1B+"  },
-                        { label: "Active MSMEs",     value: "12,300+" },
-                    ].map((stat) => (
-                        <div key={stat.label} className="text-center space-y-1">
-                            <div className="text-3xl font-black text-galaxy-gradient">{stat.value}</div>
-                            <div className="text-xs text-white/30 uppercase font-bold tracking-widest">{stat.label}</div>
+                    {stats.map((s, i) => (
+                        <div key={s.label}
+                            className="mg-card rounded-2xl p-6 text-center"
+                            style={{ animationDelay: `${i * 80}ms` }}>
+                            <div className="text-3xl font-bold mg-accent-text mb-1">{s.value}</div>
+                            <div className="mg-label">{s.label}</div>
                         </div>
                     ))}
                 </motion.div>
             </section>
 
-            <div className="cosmic-divider mx-10 my-2" />
+            {/* ── Divider ── */}
+            <div className="max-w-5xl mx-auto px-8">
+                <div className="mg-divider" />
+            </div>
 
-            {/* Features */}
-            <section className="relative z-10 py-28 px-6">
-                <div className="max-w-6xl mx-auto">
-                    <motion.div
-                        initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
-                        className="text-center mb-20"
-                    >
-                        <div className="stat-pill mx-auto mb-6">Core Architecture</div>
-                        <h2 className="text-5xl font-black tracking-tighter text-white mb-4">
-                            Built for the <span className="text-nebula-gradient">Quantum Age</span>
-                        </h2>
-                    </motion.div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {[
-                            { title: "Immutable Hashing", desc: "Every invoice is cryptographically sealed using SHA-256 before ledger admission � tamper-proof at the quantum level.", icon: Lock, accentFrom: "#7c3aed", accentTo: "#a78bfa", glow: "glow-purple", delay: 0 },
-                            { title: "Instant Liquidity",  desc: "Autonomous disbursement protocols triggered on verified audit confirmation, with sub-second finality.",              icon: Zap,  accentFrom: "#ec4899", accentTo: "#f97316", glow: "glow-pink",   delay: 0.15 },
-                            { title: "Auditor Oversight",  desc: "Real-time surveillance dashboard for regulatory transparency, fraud detection, and quantum integrity verification.",  icon: PieChart, accentFrom: "#06b6d4", accentTo: "#6366f1", glow: "glow-cyan", delay: 0.3 },
-                        ].map((f) => (
-                            <motion.div
-                                key={f.title}
-                                initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: f.delay }}
-                                className="galaxy-card group relative rounded-3xl p-10 overflow-hidden"
-                            >
-                                <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity duration-700" style={{ background: f.accentFrom }} />
-                                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-8 ${f.glow}`} style={{ background: `linear-gradient(135deg, ${f.accentFrom}, ${f.accentTo})` }}>
-                                    <f.icon className="w-8 h-8 text-white" />
-                                </div>
-                                <h3 className="text-2xl font-bold text-white mb-4 tracking-tight">{f.title}</h3>
-                                <p className="text-white/40 leading-relaxed font-medium">{f.desc}</p>
-                                <div className="mt-8 h-px rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ background: `linear-gradient(90deg, ${f.accentFrom}, ${f.accentTo}, transparent)` }} />
-                            </motion.div>
-                        ))}
-                    </div>
+            {/* ── Features ── */}
+            <section id="features" className="max-w-5xl mx-auto px-8 py-20">
+                <div className="text-center mb-14">
+                    <span className="mg-label block mb-3">Platform Capabilities</span>
+                    <h2 className="text-3xl font-bold text-mg-silver tracking-tight">
+                        Everything you need for <span className="mg-accent-text">secure trade finance</span>
+                    </h2>
                 </div>
-            </section>
-
-            {/* Tech stack banner */}
-            <section className="relative z-10 py-16 px-6">
-                <div className="max-w-4xl mx-auto glass-galaxy rounded-3xl p-10 border-animate">
-                    <div className="grid grid-cols-3 gap-8 items-center text-center">
-                        {[
-                            { icon: GitBranch, label: "Polygon zkEVM",  desc: "L2 Settlement" },
-                            { icon: Hexagon,   label: "IPFS Pinning",   desc: "Storage Layer" },
-                            { icon: Star,      label: "SHA-256 Proofs", desc: "Crypto Binding" },
-                        ].map((t) => (
-                            <div key={t.label} className="flex flex-col items-center gap-3">
-                                <div className="w-12 h-12 rounded-xl bg-galaxy-purple/20 border border-galaxy-lavender/25 flex items-center justify-center">
-                                    <t.icon className="w-6 h-6 text-galaxy-lavender" />
-                                </div>
-                                <div className="font-bold text-white">{t.label}</div>
-                                <div className="text-xs text-white/35 uppercase font-bold tracking-widest">{t.desc}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {features.map((f, i) => (
+                        <motion.div
+                            key={f.title}
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: i * 0.08 }}
+                            className="mg-card rounded-2xl p-6 group"
+                        >
+                            <div className="w-10 h-10 rounded-xl mb-4 flex items-center justify-center"
+                                style={{ background: "rgba(74,78,143,0.25)", border: "1px solid rgba(164,144,194,0.18)" }}>
+                                <f.icon className="w-5 h-5 text-mg-lavender" />
                             </div>
-                        ))}
+                            <h3 className="font-semibold text-mg-silver mb-2">{f.title}</h3>
+                            <p className="text-sm text-mg-muted leading-relaxed">{f.desc}</p>
+                        </motion.div>
+                    ))}
+                </div>
+            </section>
+
+            {/* ── CTA ── */}
+            <section className="max-w-3xl mx-auto px-8 py-16 text-center">
+                <div className="mg-card rounded-3xl p-12 relative overflow-hidden">
+                    <div className="pointer-events-none absolute inset-0 rounded-3xl"
+                        style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(74,78,143,0.18) 0%, transparent 70%)" }} />
+                    <div className="relative">
+                        <h2 className="text-3xl font-bold text-mg-silver mb-4 tracking-tight">
+                            Ready to transform your receivables?
+                        </h2>
+                        <p className="text-mg-muted mb-8 text-sm">Join 800+ MSMEs and 50+ lenders already on the FInovaX network.</p>
+                        <Link href="/login" className="mg-btn-primary text-sm inline-flex gap-2">
+                            Start for Free
+                            <ArrowRight className="w-4 h-4" />
+                        </Link>
                     </div>
                 </div>
             </section>
 
-            {/* Footer */}
-            <footer className="relative z-10 py-16 px-6 border-t border-galaxy-lavender/10 text-center">
-                <div className="flex items-center justify-center gap-3 mb-6">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-galaxy-purple to-galaxy-pink flex items-center justify-center glow-purple">
-                        <Shield className="text-white w-4 h-4" />
-                    </div>
-                    <span className="text-xl font-black tracking-tighter text-galaxy-gradient">FINOVAX</span>
-                </div>
-                <p className="text-white/20 text-xs font-bold uppercase tracking-[0.35em]">
-                    &copy; 2025 FINOVAX LABS � MIDNIGHT GALAXY PROTOCOL
+            {/* ── Footer ── */}
+            <footer className="border-t border-mg-lavender/10 py-8 px-8 text-center">
+                <p className="text-xs text-mg-dim">
+                    © 2026 FInovaX · Built on <span className="text-mg-lavender">Polygon zkEVM</span> · All rights reserved
                 </p>
             </footer>
         </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useAuth } from "@/context/AuthContext";
 import { Navbar } from "@/components/shared/Navbar";
@@ -6,11 +6,7 @@ import { Sidebar } from "@/components/shared/Sidebar";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-export default function DashboardLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { role, isAuthenticated } = useAuth();
     const router = useRouter();
 
@@ -21,17 +17,18 @@ export default function DashboardLayout({
     if (!isAuthenticated) return null;
 
     return (
-        <div className="flex flex-col h-screen overflow-hidden bg-galaxy-void">
+        <div className="flex flex-col h-screen overflow-hidden" style={{ background: "var(--mg-base)" }}>
             <Navbar />
             <div className="flex flex-1 overflow-hidden">
                 <Sidebar />
-                <main className="flex-1 overflow-y-auto p-8 relative">
-                    {/* Subtle per-page nebula */}
-                    <div className="absolute top-0 right-0 w-[500px] h-[400px] rounded-full blur-[120px] pointer-events-none opacity-30"
-                        style={{ background: "radial-gradient(ellipse, rgba(124,58,237,0.18) 0%, transparent 70%)" }} />
-                    <div className="absolute bottom-0 left-0 w-[400px] h-[300px] rounded-full blur-[100px] pointer-events-none opacity-20"
-                        style={{ background: "radial-gradient(ellipse, rgba(236,72,153,0.12) 0%, transparent 70%)" }} />
-                    <div className="max-w-7xl mx-auto relative z-10">
+                <main className="flex-1 overflow-y-auto relative">
+                    {/* Subtle ambient glow — top right */}
+                    <div className="pointer-events-none absolute top-0 right-0 w-96 h-72 rounded-full blur-[100px] opacity-20"
+                        style={{ background: "radial-gradient(ellipse, rgba(74,78,143,0.35) 0%, transparent 70%)" }} />
+                    {/* Subtle ambient glow — bottom left */}
+                    <div className="pointer-events-none absolute bottom-0 left-0 w-80 h-64 rounded-full blur-[80px] opacity-15"
+                        style={{ background: "radial-gradient(ellipse, rgba(164,144,194,0.20) 0%, transparent 70%)" }} />
+                    <div className="relative z-10 max-w-7xl mx-auto p-8">
                         {children}
                     </div>
                 </main>

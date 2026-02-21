@@ -1,112 +1,116 @@
-"use client";
+﻿"use client";
 
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import {
-    FileUp,
-    History,
-    Search,
-    Layers,
-    BarChart3,
-    Activity,
-    Settings,
-    LayoutDashboard,
+    FileUp, History, Search, Layers,
+    BarChart3, Activity, LayoutDashboard, Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 
-const roleColors = {
-    msme:    { active: "text-galaxy-lavender border-galaxy-lavender/30 bg-galaxy-purple/15 shadow-galaxy-sm", dot: "bg-galaxy-lavender" },
-    lender:  { active: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.2)]", dot: "bg-emerald-400" },
-    auditor: { active: "text-galaxy-pink border-galaxy-pink/30 bg-galaxy-pink/10 shadow-pink-glow", dot: "bg-galaxy-pink" },
+const roleAccent: Record<string, { active: string; icon: string; dot: string; tag: string }> = {
+    msme:    { active: "bg-mg-cosmic/20 text-mg-lavender border-mg-lavender/30",   icon: "text-mg-lavender", dot: "bg-mg-lavender",    tag: "MSME"     },
+    lender:  { active: "bg-status-success/10 text-status-success border-status-success/30", icon: "text-status-success", dot: "bg-status-success", tag: "LENDER"   },
+    auditor: { active: "bg-violet-500/10 text-violet-300 border-violet-400/30",    icon: "text-violet-300",  dot: "bg-violet-400",     tag: "AUDITOR"  },
+};
+
+const menuItems = {
+    msme: [
+        { label: "Overview",       icon: LayoutDashboard, href: "/msme"         },
+        { label: "Upload Invoice", icon: FileUp,          href: "/msme/upload"  },
+        { label: "History",        icon: History,         href: "/msme/history" },
+    ],
+    lender: [
+        { label: "Overview",      icon: LayoutDashboard, href: "/lender"        },
+        { label: "Verify Hash",   icon: Search,          href: "/lender/verify" },
+        { label: "Active Loans",  icon: Layers,          href: "/lender/loans"  },
+    ],
+    auditor: [
+        { label: "Analytics",  icon: BarChart3, href: "/auditor"       },
+        { label: "Audit Logs", icon: Activity,  href: "/auditor/logs"  },
+    ],
 };
 
 export const Sidebar = () => {
     const { role } = useAuth();
-    const pathname = usePathname();
-
-    const menuItems = {
-        msme: [
-            { label: "Dashboard",      icon: LayoutDashboard, href: "/msme"         },
-            { label: "Upload Invoice", icon: FileUp,          href: "/msme/upload"  },
-            { label: "History",        icon: History,         href: "/msme/history" },
-        ],
-        lender: [
-            { label: "Overview",    icon: LayoutDashboard, href: "/lender"       },
-            { label: "Verify Hash", icon: Search,          href: "/lender/verify"},
-            { label: "Active Loans",icon: Layers,          href: "/lender/loans" },
-        ],
-        auditor: [
-            { label: "Analytics",  icon: BarChart3, href: "/auditor"      },
-            { label: "Audit Logs", icon: Activity,  href: "/auditor/logs" },
-        ],
-    };
-
-    const currentItems = role ? menuItems[role as keyof typeof menuItems] : [];
-    const colors = role ? roleColors[role as keyof typeof roleColors] : roleColors.msme;
+    const pathname  = usePathname();
+    const items     = role ? menuItems[role as keyof typeof menuItems] ?? [] : [];
+    const accent    = role ? roleAccent[role as keyof typeof roleAccent] : roleAccent.msme;
 
     return (
         <motion.aside
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -16 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="w-64 border-r border-galaxy-lavender/08 glass-dark flex flex-col h-[calc(100vh-64px)] overflow-y-auto relative"
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="mg-sidebar w-60 flex flex-col h-[calc(100vh-64px)] overflow-y-auto shrink-0"
         >
-            {/* Side gradient accent */}
-            <div className="absolute top-0 bottom-0 right-0 w-px" style={{ background: "linear-gradient(180deg, transparent, rgba(167,139,250,0.25), rgba(236,72,153,0.15), transparent)" }} />
-
-            {/* Nav items */}
-            <div className="flex-1 py-8 px-4 space-y-1">
-                {currentItems.map((item, i) => {
-                    const isActive = pathname === item.href;
+            {/* ── Navigation ── */}
+            <nav className="flex-1 py-6 px-3 space-y-0.5">
+                <p className="mg-label px-3 mb-3">Navigation</p>
+                {items.map((item, i) => {
+                    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                     return (
                         <motion.div
                             key={item.label}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.07 }}
+                            transition={{ delay: 0.05 + i * 0.06, ease: "easeOut" }}
                         >
                             <Link
                                 href={item.href}
                                 className={cn(
-                                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group border",
+                                    "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group border",
                                     isActive
-                                        ? cn("border", colors.active)
-                                        : "border-transparent text-white/40 hover:text-white/75 hover:bg-galaxy-purple/08 hover:border-galaxy-lavender/12"
+                                        ? cn("border", accent.active)
+                                        : "border-transparent text-mg-muted hover:text-mg-silver hover:bg-mg-card/60 hover:border-mg-lavender/10"
                                 )}
                             >
-                                {/* Active indicator dot */}
+                                {/* Active left indicator */}
                                 {isActive && (
-                                    <div className={cn("absolute left-0 w-0.5 h-8 rounded-r-full", colors.dot)} style={{ marginLeft: "-1px" }} />
+                                    <span className={cn("absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full", accent.dot)} />
                                 )}
                                 <item.icon className={cn(
-                                    "w-5 h-5 transition-all",
-                                    isActive ? colors.active.split(" ")[0] : "text-white/25 group-hover:text-white/55"
+                                    "w-4 h-4 shrink-0 transition-colors",
+                                    isActive ? accent.icon : "text-mg-dim group-hover:text-mg-muted"
                                 )} />
-                                <span className="font-semibold text-sm">{item.label}</span>
-                                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "currentColor" }} />}
+                                <span className="truncate">{item.label}</span>
+                                {isActive && (
+                                    <span className={cn("ml-auto w-1.5 h-1.5 rounded-full", accent.dot)} />
+                                )}
                             </Link>
                         </motion.div>
                     );
                 })}
-            </div>
+            </nav>
 
-            {/* Bottom section */}
-            <div className="p-4 border-t border-galaxy-lavender/08">
-                {/* Role indicator */}
-                <div className="px-4 py-3 mb-2 rounded-xl glass border border-galaxy-lavender/10">
-                    <div className="flex items-center gap-2">
-                        <div className={cn("w-2 h-2 rounded-full animate-pulse", colors.dot)} />
-                        <span className="text-[10px] text-white/35 uppercase font-bold tracking-widest">
-                            {role?.toUpperCase()} MODE
+            {/* ── Divider ── */}
+            <div className="mx-3 mg-divider" />
+
+            {/* ── Bottom section ── */}
+            <div className="p-3 pb-5 space-y-0.5">
+                <p className="mg-label px-3 mb-3">Settings</p>
+                <Link
+                    href="/settings"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-mg-muted hover:text-mg-silver hover:bg-mg-card/60 border border-transparent hover:border-mg-lavender/10 transition-all duration-150"
+                >
+                    <Settings className="w-4 h-4 text-mg-dim" />
+                    <span>Preferences</span>
+                </Link>
+
+                {/* Role badge */}
+                <div className="mt-3 mx-1 px-3 py-2.5 rounded-lg bg-mg-card border border-mg-lavender/12">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className={cn("w-2 h-2 rounded-full animate-pulse", accent.dot)} />
+                            <span className="text-xs font-semibold text-mg-muted">{role?.toUpperCase()}</span>
+                        </div>
+                        <span className={cn("text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full", accent.active)}>
+                            {accent.tag}
                         </span>
                     </div>
                 </div>
-                <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-white/30 hover:text-white/60 hover:bg-galaxy-purple/08 hover:border-galaxy-lavender/12 border border-transparent w-full transition-all">
-                    <Settings className="w-5 h-5" />
-                    <span className="font-semibold text-sm">Settings</span>
-                </button>
             </div>
         </motion.aside>
     );

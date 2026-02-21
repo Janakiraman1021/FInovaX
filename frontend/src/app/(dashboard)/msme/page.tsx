@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { InvoiceUploader } from "@/components/finovax/InvoiceUploader";
@@ -11,144 +11,151 @@ import { ExternalLink, Database, TrendingUp, FileCheck, Clock, Wallet } from "lu
 
 export default function MSMEDashboard() {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading]   = useState(true);
 
     useEffect(() => {
-        const fetchInvoices = async () => {
+        const fetch = async () => {
             const data = await api.invoices.getAll();
             setInvoices(data);
             setLoading(false);
         };
-        fetchInvoices();
-        const interval = setInterval(fetchInvoices, 5000);
-        return () => clearInterval(interval);
+        fetch();
+        const t = setInterval(fetch, 6000);
+        return () => clearInterval(t);
     }, []);
 
-    const totalAmount  = invoices.reduce((s, i) => s + i.amount, 0);
-    const financed     = invoices.filter(i => i.status === "FINANCED").length;
-    const verified     = invoices.filter(i => i.status === "VERIFIED").length;
-    const pending      = invoices.filter(i => i.status === "PENDING").length;
+    const totalAmount = invoices.reduce((s, i) => s + i.amount, 0);
+    const financed    = invoices.filter(i => i.status === "FINANCED").length;
+    const verified    = invoices.filter(i => i.status === "VERIFIED").length;
+    const pending     = invoices.filter(i => i.status === "PENDING").length;
 
     const stats = [
-        { label: "Portfolio Value",    value: formatCurrency(totalAmount), icon: Wallet,     from: "#7c3aed", to: "#a78bfa", glow: "shadow-galaxy-sm" },
-        { label: "Financed",           value: financed,                    icon: TrendingUp, from: "#10b981", to: "#06b6d4", glow: "shadow-[0_0_15px_rgba(16,185,129,0.3)]" },
-        { label: "Ledger Verified",    value: verified,                    icon: FileCheck,  from: "#06b6d4", to: "#6366f1", glow: "shadow-[0_0_15px_rgba(6,182,212,0.3)]" },
-        { label: "Awaiting Audit",     value: pending,                     icon: Clock,      from: "#ec4899", to: "#f97316", glow: "shadow-pink-glow opacity-70" },
+        { label: "Portfolio Value",  value: formatCurrency(totalAmount), icon: Wallet,     from: "#4a4e8f", to: "#a490c2" },
+        { label: "Financed",         value: financed,                    icon: TrendingUp, from: "#10b981", to: "#34d399" },
+        { label: "Ledger Verified",  value: verified,                    icon: FileCheck,  from: "#4a4e8f", to: "#818cf8" },
+        { label: "Awaiting Audit",   value: pending,                     icon: Clock,      from: "#7c3aed", to: "#a490c2" },
     ];
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Header */}
-            <div className="flex justify-between items-end">
+        <div className="space-y-8">
+            {/* ── Page header ── */}
+            <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center justify-between"
+            >
                 <div>
-                    <div className="stat-pill mb-3">MSME Portal</div>
-                    <h1 className="text-4xl font-black text-white tracking-tighter mb-2">
-                        Portfolio <span className="text-galaxy-gradient">Overview</span>
+                    <p className="mg-label mb-1.5">MSME Portal</p>
+                    <h1 className="text-3xl font-bold text-mg-silver tracking-tight">
+                        Portfolio <span className="mg-accent-text">Overview</span>
                     </h1>
-                    <p className="text-white/35 text-sm font-medium">Manage your verified receivables and financing status</p>
+                    <p className="text-sm text-mg-muted mt-1">Manage your verified receivables and financing status</p>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full glass border border-emerald-500/20">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
-                    <span className="text-[10px] text-emerald-400 uppercase font-bold tracking-widest">Ledger Synced</span>
+                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-mg-card border border-status-success/25">
+                    <div className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+                    <span className="text-[10px] uppercase font-semibold text-status-success tracking-widest">Ledger Live</span>
                 </div>
-            </div>
+            </motion.div>
 
-            {/* Stats row */}
+            {/* ── Stats row ── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {stats.map((s, i) => (
                     <motion.div
                         key={s.label}
-                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-                        className="galaxy-card rounded-2xl p-5 group"
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.07 }}
+                        className="mg-stat-card group"
                     >
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform ${s.glow}`}
-                            style={{ background: `linear-gradient(135deg, ${s.from}, ${s.to})` }}>
-                            <s.icon className="w-5 h-5 text-white" />
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-105"
+                            style={{ background: `linear-gradient(135deg, ${s.from}, ${s.to})`, boxShadow: `0 0 12px ${s.from}50` }}>
+                            <s.icon className="w-4 h-4 text-white" />
                         </div>
-                        <div className="text-xs text-white/35 uppercase font-bold tracking-widest mb-1">{s.label}</div>
-                        <div className="text-2xl font-black text-white">{s.value}</div>
+                        <p className="mg-label mb-1">{s.label}</p>
+                        <p className="text-2xl font-bold text-mg-silver">{s.value}</p>
                     </motion.div>
                 ))}
             </div>
 
-            {/* Main content */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Invoice table */}
-                <div className="lg:col-span-2">
-                    <div className="galaxy-card rounded-3xl overflow-hidden">
-                        {/* Table header */}
-                        <div className="p-6 border-b border-galaxy-lavender/10 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-galaxy-purple/20 border border-galaxy-lavender/25 flex items-center justify-center">
-                                    <Database className="w-4 h-4 text-galaxy-lavender" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-white text-sm uppercase tracking-widest">Verified Invoices</h3>
-                                    <div className="text-[10px] text-white/30 font-mono">{invoices.length} records on ledger</div>
-                                </div>
-                            </div>
-                            <div className="stat-pill">{loading ? "Syncing..." : "Live"}</div>
-                        </div>
+            {/* ── Main grid ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="text-left border-b border-galaxy-lavender/08">
-                                        {["ID / Hash", "Amount", "Issued At", "Status", ""].map(h => (
-                                            <th key={h} className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-white/30">{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loading ? (
-                                        <tr>
-                                            <td colSpan={5} className="px-6 py-16 text-center">
-                                                <div className="flex flex-col items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full border-2 border-galaxy-lavender/20 border-t-galaxy-lavender animate-spin" />
-                                                    <span className="text-white/20 text-sm font-mono animate-pulse">Syncing with ledger...</span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ) : invoices.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} className="px-6 py-16 text-center text-white/20 italic">No invoices on ledger yet</td>
-                                        </tr>
-                                    ) : (
-                                        invoices.map((inv: Invoice, i) => (
-                                            <motion.tr
-                                                layout
-                                                key={inv.id}
-                                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
-                                                className="border-b border-galaxy-lavender/06 hover:bg-galaxy-purple/05 transition-colors group"
-                                            >
-                                                <td className="px-6 py-4">
-                                                    <div className="font-bold text-white text-sm">{inv.id}</div>
-                                                    <div className="text-[10px] font-mono text-white/20 group-hover:text-galaxy-lavender/50 transition-colors w-32 truncate">{inv.invoiceHash}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="font-black text-galaxy-lavender">{formatCurrency(inv.amount)}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="text-xs text-white/50">{formatDate(inv.timestamp)}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <StatusBadge status={inv.status} />
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <button className="p-2 rounded-lg hover:bg-galaxy-purple/20 border border-transparent hover:border-galaxy-lavender/25 text-white/20 hover:text-galaxy-lavender transition-all">
-                                                        <ExternalLink className="w-4 h-4" />
-                                                    </button>
-                                                </td>
-                                            </motion.tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                {/* Invoice table */}
+                <div className="lg:col-span-2 mg-card rounded-2xl overflow-hidden">
+                    {/* Table header */}
+                    <div className="px-6 py-4 flex items-center justify-between border-b border-mg-lavender/10">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                                style={{ background: "rgba(74,78,143,0.22)", border: "1px solid rgba(164,144,194,0.18)" }}>
+                                <Database className="w-4 h-4 text-mg-lavender" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-mg-silver text-sm">Verified Invoices</p>
+                                <p className="text-[10px] text-mg-dim font-mono">{invoices.length} records on ledger</p>
+                            </div>
                         </div>
+                        <span className="mg-pill">{loading ? "Syncing…" : "Live"}</span>
+                    </div>
+
+                    {/* Table */}
+                    <div className="overflow-x-auto">
+                        <table className="w-full mg-table">
+                            <thead>
+                                <tr>
+                                    {["Invoice ID", "Amount", "Issued", "Status", ""].map(h => (
+                                        <th key={h} className="text-left">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={5} className="py-16 text-center">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="w-7 h-7 rounded-full border-2 border-mg-dim border-t-mg-lavender animate-spin" />
+                                                <span className="text-xs text-mg-dim animate-pulse">Syncing with ledger…</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : invoices.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="py-16 text-center text-mg-dim text-sm italic">
+                                            No invoices on ledger yet
+                                        </td>
+                                    </tr>
+                                ) : invoices.map((inv: Invoice, i) => (
+                                    <motion.tr
+                                        key={inv.id}
+                                        layout
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ delay: i * 0.03 }}
+                                    >
+                                        <td>
+                                            <p className="font-medium text-mg-silver text-sm">{inv.id}</p>
+                                            <p className="font-mono text-[10px] text-mg-dim mt-0.5 truncate max-w-[140px]">{inv.invoiceHash?.slice(0, 14)}…</p>
+                                        </td>
+                                        <td className="font-semibold text-mg-silver">{formatCurrency(inv.amount)}</td>
+                                        <td className="text-mg-muted text-sm">{formatDate(inv.timestamp)}</td>
+                                        <td><StatusBadge status={inv.status} /></td>
+                                        <td>
+                                            {inv.ledgerTx && (
+                                                <a href={`https://cardona-zkevm.polygonscan.com/tx/${inv.ledgerTx}`}
+                                                    target="_blank" rel="noopener noreferrer"
+                                                    className="p-1.5 rounded-md hover:bg-mg-elevated text-mg-dim hover:text-mg-lavender transition-colors inline-flex"
+                                                >
+                                                    <ExternalLink className="w-3.5 h-3.5" />
+                                                </a>
+                                            )}
+                                        </td>
+                                    </motion.tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                {/* Uploader */}
+                {/* Upload panel */}
                 <div>
                     <InvoiceUploader />
                 </div>

@@ -1,4 +1,4 @@
-import type { Config } from "tailwindcss";
+﻿import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
@@ -11,100 +11,141 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        // Midnight Galaxy Core
-        galaxy: {
-          void:   "#050510",
-          deep:   "#0a0820",
-          nebula: "#0d0b2a",
-          cosmic: "#130d35",
-          purple: "#7c3aed",
-          deep_purple: "#4c1d95",
-          lavender: "#a78bfa",
-          stardust: "#c4b5fd",
-          pink:   "#ec4899",
-          cyan:   "#06b6d4",
-          star:   "#e2e8f0",
-          gold:   "#f59e0b",
-          emerald: "#10b981",
+        // Midnight Galaxy Design System
+        mg: {
+          base:     "#1a1128",
+          surface:  "#231739",
+          card:     "#2b1e3e",
+          elevated: "#342447",
+          cosmic:   "#4a4e8f",
+          lavender: "#a490c2",
+          silver:   "#e6e6fa",
+          muted:    "#8b7da0",
+          dim:      "#5c4f6e",
         },
+        // Legacy galaxy tokens kept for compatibility
+        galaxy: {
+          void:     "#1a1128",
+          deep:     "#231739",
+          card:     "#2b1e3e",
+          purple:   "#4a4e8f",
+          lavender: "#a490c2",
+          pink:     "#c084fc",
+          cyan:     "#818cf8",
+          star:     "#e6e6fa",
+          gold:     "#fbbf24",
+          emerald:  "#34d399",
+        },
+        // Status palette
+        status: {
+          success: "#34d399",
+          warning: "#fbbf24",
+          danger:  "#f87171",
+          info:    "#60a5fa",
+        },
+      },
+      fontFamily: {
+        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        mono: ["JetBrains Mono", "Fira Code", "Menlo", "monospace"],
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic":  "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-        // Status gradients — galaxy edition
-        "pending-gradient":  "linear-gradient(90deg, #7c3aed, #ec4899)",
-        "verified-gradient": "linear-gradient(90deg, #06b6d4, #6366f1)",
-        "financed-gradient": "linear-gradient(90deg, #10b981, #06b6d4)",
-        // Galaxy card bg
-        "galaxy-card": "linear-gradient(135deg, rgba(20,10,55,0.80) 0%, rgba(8,5,22,0.90) 100%)",
-        // Nebula gradient for buttons
-        "nebula-btn":  "linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #06b6d4 100%)",
+        "mg-card-gradient":  "linear-gradient(145deg, rgba(43,30,62,0.65) 0%, rgba(26,17,40,0.80) 100%)",
+        "mg-btn-gradient":   "linear-gradient(135deg, #4a4e8f 0%, #6b5fa0 50%, #a490c2 100%)",
+        "mg-accent-gradient":"linear-gradient(90deg, #a490c2 0%, #e6e6fa 100%)",
+        // Legacy
+        "galaxy-card":       "linear-gradient(135deg, rgba(43,30,62,0.65) 0%, rgba(26,17,40,0.80) 100%)",
+        "nebula-btn":        "linear-gradient(135deg, #4a4e8f 0%, #6b5fa0 50%, #a490c2 100%)",
+        "pending-gradient":  "linear-gradient(90deg, #4a4e8f, #a490c2)",
+        "verified-gradient": "linear-gradient(90deg, #34d399, #4a4e8f)",
+        "financed-gradient": "linear-gradient(90deg, #34d399, #60a5fa)",
+      },
+      borderRadius: {
+        "2xl": "1rem",
+        "3xl": "1.25rem",
+        "4xl": "1.5rem",
+      },
+      boxShadow: {
+        "mg-sm":    "0 2px 8px rgba(74,78,143,0.15), 0 0 0 1px rgba(164,144,194,0.08)",
+        "mg-md":    "0 4px 16px rgba(74,78,143,0.22), 0 0 0 1px rgba(164,144,194,0.10)",
+        "mg-lg":    "0 8px 32px rgba(74,78,143,0.30), 0 0 0 1px rgba(164,144,194,0.12)",
+        "mg-glow":  "0 0 24px rgba(164,144,194,0.25)",
+        "galaxy-sm":"0 4px 16px rgba(74,78,143,0.22)",
+        "galaxy-md":"0 8px 24px rgba(74,78,143,0.28)",
+        "pink-glow": "0 0 20px rgba(192,132,252,0.25)",
+        "cyan-glow": "0 0 20px rgba(129,140,248,0.25)",
       },
       animation: {
-        pulse:        "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        shimmer:      "shimmer 2.5s infinite linear",
-        shake:        "shake 0.5s cubic-bezier(.36,.07,.19,.97) both",
-        twinkle:      "starTwinkle 6s ease-in-out infinite alternate",
-        float:        "galaxyFloat 6s ease-in-out infinite",
-        "border-glow":"borderGlow 3s ease-in-out infinite",
-        "cosmic-pulse":"cosmicPulse 3s ease-in-out infinite",
-        orbit:        "orbitSpin 10s linear infinite",
-        scan:         "scanLine 4s ease-in-out infinite",
-        "nebula-shift":"nebulaShift 5s linear infinite",
+        "pulse":        "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "spin360":      "spin360 1.2s linear infinite",
+        "shimmer":      "shimmer 2.5s infinite linear",
+        "subtle-float": "subtleFloat 6s ease-in-out infinite",
+        "cosmic-pulse": "cosmicPulse 3s ease-in-out infinite",
+        "fade-up":      "fadeUp 0.6s ease forwards",
+        "border-pulse": "borderPulse 3s ease-in-out infinite",
+        "shake":        "shake 0.5s cubic-bezier(.36,.07,.19,.97) both",
+        // Legacy
+        "float":        "subtleFloat 6s ease-in-out infinite",
+        "orbit":        "spin360 10s linear infinite",
+        "twinkle":      "cosmicPulse 4s ease-in-out infinite",
+        scan:           "scanLine 4s ease-in-out infinite",
       },
       keyframes: {
         shimmer: {
-          "0%":   { backgroundPosition: "-200px 0" },
-          "100%": { backgroundPosition:  "200px 0" },
+          "0%":   { backgroundPosition: "-200% center" },
+          "100%": { backgroundPosition: "200% center" },
         },
         shake: {
-          "10%, 90%":       { transform: "translate3d(-1px, 0, 0)" },
-          "20%, 80%":       { transform: "translate3d( 2px, 0, 0)" },
-          "30%, 50%, 70%":  { transform: "translate3d(-4px, 0, 0)" },
-          "40%, 60%":       { transform: "translate3d( 4px, 0, 0)" },
-        },
-        starTwinkle: {
-          "0%":   { opacity: "0.55" },
-          "50%":  { opacity: "1.00" },
-          "100%": { opacity: "0.65" },
-        },
-        galaxyFloat: {
-          "0%,100%": { transform: "translateY(0px) rotate(0deg)"   },
-          "50%":     { transform: "translateY(-18px) rotate(4deg)" },
-        },
-        borderGlow: {
-          "0%,100%": { borderColor: "rgba(167,139,250,0.25)" },
-          "50%":     { borderColor: "rgba(167,139,250,0.65)" },
+          "10%, 90%":      { transform: "translate3d(-1px, 0, 0)" },
+          "20%, 80%":      { transform: "translate3d(2px, 0, 0)" },
+          "30%, 50%, 70%": { transform: "translate3d(-4px, 0, 0)" },
+          "40%, 60%":      { transform: "translate3d(4px, 0, 0)" },
         },
         cosmicPulse: {
-          "0%,100%": { boxShadow: "0 0 20px rgba(124,58,237,0.40), 0 0 40px rgba(124,58,237,0.20)" },
-          "50%":     { boxShadow: "0 0 50px rgba(124,58,237,0.80), 0 0 90px rgba(124,58,237,0.40), 0 0 130px rgba(236,72,153,0.25)" },
+          "0%, 100%": { opacity: "0.6", transform: "scale(1)" },
+          "50%":      { opacity: "1",   transform: "scale(1.04)" },
         },
-        orbitSpin: {
-          from: { transform: "rotate(0deg)"   },
-          to:   { transform: "rotate(360deg)" },
+        subtleFloat: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%":      { transform: "translateY(-6px)" },
+        },
+        fadeUp: {
+          from: { opacity: "0", transform: "translateY(16px)" },
+          to:   { opacity: "1", transform: "translateY(0)" },
+        },
+        borderPulse: {
+          "0%, 100%": { borderColor: "rgba(164,144,194,0.18)" },
+          "50%":      { borderColor: "rgba(164,144,194,0.38)" },
         },
         scanLine: {
-          "0%":  { top: "-5%",  opacity: "0" },
-          "10%": { opacity: "1" },
-          "90%": { opacity: "1" },
-          "100%":{ top: "105%", opacity: "0" },
+          "0%":   { top: "-2px", opacity: "0" },
+          "10%":  { opacity: "0.8" },
+          "90%":  { opacity: "0.6" },
+          "100%": { top: "100%", opacity: "0" },
+        },
+        spin360: { to: { transform: "rotate(360deg)" } },
+        galaxyFloat: {
+          "0%,100%": { transform: "translateY(0px)" },
+          "50%":     { transform: "translateY(-8px)" },
+        },
+        borderGlow: {
+          "0%,100%": { borderColor: "rgba(164,144,194,0.18)" },
+          "50%":     { borderColor: "rgba(164,144,194,0.45)" },
         },
         nebulaShift: {
-          "0%":   { backgroundPosition: "0% 50%"   },
-          "50%":  { backgroundPosition: "100% 50%" },
-          "100%": { backgroundPosition: "0% 50%"   },
+          "0%,100%": { backgroundPosition: "0% 50%" },
+          "50%":     { backgroundPosition: "100% 50%" },
         },
-      },
-      boxShadow: {
-        "galaxy-sm":  "0 0 15px rgba(124,58,237,0.30)",
-        "galaxy-md":  "0 0 30px rgba(124,58,237,0.40), 0 0 60px rgba(124,58,237,0.15)",
-        "galaxy-lg":  "0 0 50px rgba(124,58,237,0.55), 0 0 100px rgba(124,58,237,0.25)",
-        "pink-glow":  "0 0 30px rgba(236,72,153,0.45)",
-        "cyan-glow":  "0 0 30px rgba(6,182,212,0.45)",
+        orbitSpin: { to: { transform: "rotate(360deg)" } },
+        starTwinkle: {
+          "0%,100%": { opacity: "0.5" },
+          "50%":     { opacity: "1" },
+        },
       },
     },
   },
   plugins: [],
 };
+
 export default config;

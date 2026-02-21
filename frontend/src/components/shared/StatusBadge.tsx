@@ -11,33 +11,38 @@ interface StatusBadgeProps {
 
 const statusConfig: Record<InvoiceStatus, {
     label: string;
-    gradient: string;
-    glow: string;
+    bg: string;
+    border: string;
+    text: string;
     dot: string;
 }> = {
     PENDING: {
-        label: "Pending",
-        gradient: "from-galaxy-purple to-galaxy-pink",
-        glow:     "shadow-[0_0_14px_rgba(124,58,237,0.60)]",
-        dot:      "bg-galaxy-lavender",
+        label:  "Pending",
+        bg:     "rgba(74,78,143,0.18)",
+        border: "rgba(164,144,194,0.28)",
+        text:   "#a490c2",
+        dot:    "#a490c2",
     },
     VERIFIED: {
-        label: "Verified",
-        gradient: "from-galaxy-cyan to-indigo-500",
-        glow:     "shadow-[0_0_14px_rgba(6,182,212,0.55)]",
-        dot:      "bg-galaxy-cyan",
+        label:  "Verified",
+        bg:     "rgba(74,78,143,0.18)",
+        border: "rgba(129,140,248,0.30)",
+        text:   "#818cf8",
+        dot:    "#818cf8",
     },
     FINANCED: {
-        label: "Financed",
-        gradient: "from-emerald-500 to-galaxy-cyan",
-        glow:     "shadow-[0_0_14px_rgba(16,185,129,0.55)]",
-        dot:      "bg-emerald-400",
+        label:  "Financed",
+        bg:     "rgba(52,211,153,0.12)",
+        border: "rgba(52,211,153,0.28)",
+        text:   "#34d399",
+        dot:    "#34d399",
     },
     FRAUD_ALERT: {
-        label: "Fraud Alert",
-        gradient: "from-red-600 to-orange-500",
-        glow:     "shadow-[0_0_18px_rgba(239,68,68,0.75)]",
-        dot:      "bg-red-400",
+        label:  "Fraud Alert",
+        bg:     "rgba(248,113,113,0.12)",
+        border: "rgba(248,113,113,0.30)",
+        text:   "#f87171",
+        dot:    "#f87171",
     },
 };
 
@@ -58,14 +63,13 @@ export const StatusBadge = ({ status, className }: StatusBadgeProps) => {
                     : {}
             }
             className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white",
-                `bg-gradient-to-r ${cfg.gradient}`,
-                cfg.glow,
+                "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider",
                 status === "FRAUD_ALERT" && "animate-shake",
                 className
             )}
+            style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.text }}
         >
-            <span className={cn("w-1.5 h-1.5 rounded-full", cfg.dot, "opacity-90")} />
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.dot }} />
             {cfg.label}
         </motion.div>
     );
