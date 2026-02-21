@@ -1,7 +1,8 @@
 const multer = require('multer');
 const crypto = require('crypto');
 const Invoice = require('../models/Invoice');
-const User = require('../models/User'); // Added missing User import
+const User = require('../models/User');
+const LenderSubmission = require('../models/LenderSubmission');
 const AppError = require('../utils/AppError');
 const { hashBuffer, generateReceivableFingerprint } = require('../utils/hash');
 const { uploadToIPFS } = require('../services/ipfs.service');
@@ -59,13 +60,16 @@ const createInvoice = async (req, res, next) => {
         // Generate unique invoiceId
         const invoiceId = `INV-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
-        // 1. Generate SHA-256 hash
+        // 1. Generate SHA-256 hash (fileHash - for document integrity)
         const invoiceHash = hashBuffer(fileBuffer);
 
-        // 2. Check for duplicate hash in DB
-        // Hash check removed to allow multiple uploads of the same document
+        // ✅ ACTION 1 CHECK: Reject duplicate fileHash (same file already uploaded)
+        const existingFile = await Invoice.findOne({ invoiceHash });
+        if (existingFile) {
+            return next(new AppError('This file has already been uploaded. Duplicate file detected.', 409, 'DUPLICATE_FILE_HASH'));
+        }
 
-        // 3. Generate Receivable Fingerprint
+        // 2. Generate Receivable Fingerprint (business obligation identity)
         const receivableFingerprint = generateReceivableFingerprint({
             sellerGSTIN,
             buyerGSTIN,
@@ -74,21 +78,26 @@ const createInvoice = async (req, res, next) => {
             invoiceDate: parsedInvoiceDate
         });
 
-        // 4. Upload to IPFS
-        // 4. Check if this specific receivable obligation is already financed
-        const financedReceivable = await Invoice.findOne({
-            receivableFingerprint,
-            status: 'FINANCED'
-        });
-        if (financedReceivable) {
-            // Penalize for attempting to upload already financed receivable
-            const { updateTrustScore } = require('../services/trust.service');
-            await updateTrustScore(req.user.id, 'DUPLICATE_ATTEMPT', { fingerprint: receivableFingerprint });
+        // ❌ ACTION 1 RULE: Do NOT check financing status on upload
+        // MSMEs can upload even if the receivable is financed elsewhere
+        // Only file uniqueness matters here
 
-            return next(new AppError('This business obligation has already been financed', 409, 'RECEIVABLE_ALREADY_FINANCED'));
+        // 3. Check for duplicate lender submission (if lender is selected)
+        if (submittedTo) {
+            const existingSubmission = await LenderSubmission.findOne({
+                receivableFingerprint,
+                lenderId: submittedTo
+            });
+            if (existingSubmission) {
+                return next(new AppError(
+                    'You have already submitted this business obligation to this lender',
+                    409,
+                    'DUPLICATE_LENDER_SUBMISSION'
+                ));
+            }
         }
 
-        // 5. Upload to IPFS
+        // 4. Upload to IPFS
         const ipfsResult = await uploadToIPFS(fileBuffer, req.file.originalname);
 
         // 5. Anchor to Blockchain (Informational Registration)
@@ -107,7 +116,7 @@ const createInvoice = async (req, res, next) => {
             console.warn('Blockchain registration deferred or failed during upload:', bcError.message);
         }
 
-        // 7. Save invoice metadata to MongoDB
+        // 6. Save invoice metadata to MongoDB
         const invoice = await Invoice.create({
             invoiceId,
             uploadedBy: req.user.id,
@@ -128,7 +137,28 @@ const createInvoice = async (req, res, next) => {
             blockchainTxHash: blockchainResult?.invoiceTx || null,
         });
 
-        // 5. Audit log
+        // 7. Create LenderSubmission record if lender was selected
+        if (submittedTo) {
+            try {
+                await LenderSubmission.create({
+                    receivableFingerprint,
+                    invoiceId: invoice.invoiceId,
+                    msmeId: req.user.id,
+                    lenderId: submittedTo,
+                    status: 'SUBMITTED',
+                    submittedAt: new Date(),
+                });
+            } catch (submissionError) {
+                // Handle duplicate key error gracefully (race condition)
+                if (submissionError.code === 11000) {
+                    console.warn('Duplicate lender submission detected (race condition)');
+                } else {
+                    throw submissionError;
+                }
+            }
+        }
+
+        // 8. Audit logs
         await createAuditLog({
             action: 'invoice_uploaded',
             performedBy: req.user.id,
@@ -138,13 +168,14 @@ const createInvoice = async (req, res, next) => {
                 invoiceId,
                 invoiceHash,
                 receivableFingerprint,
-                ipfsCID: ipfsResult.cid
+                ipfsCID: ipfsResult.cid,
+                lenderSelected: submittedTo ? true : false
             },
             ipAddress: req.ip,
             requestId: req.requestId,
         });
 
-        // 8. Log receivable registration (internal audit)
+        // 9. Log receivable registration (internal audit)
         await createAuditLog({
             action: 'RECEIVABLE_REGISTERED',
             performedBy: req.user.id,
@@ -230,6 +261,11 @@ const getMyInvoices = async (req, res, next) => {
 /**
  * POST /api/v1/invoices/:invoiceId/submit
  * Submit an existing invoice to additional lenders.
+ * 
+ * ACTION 2 & 3 Implementation:
+ * - Checks (receivableFingerprint + lenderId) to prevent duplicate submission to SAME lender
+ * - Allows submission to DIFFERENT lenders (parallel lender discovery)
+ * - Does NOT check financing status (MSMEs can approach multiple lenders before financing)
  */
 const submitInvoice = async (req, res, next) => {
     try {
@@ -240,7 +276,7 @@ const submitInvoice = async (req, res, next) => {
             return next(new AppError('Lender ID is required for submission', 400));
         }
 
-        // 1. Verify lender exists
+        // 1. Verify lender exists and has correct role
         const lender = await User.findOne({ _id: lenderId, role: 'lender' });
         if (!lender) {
             return next(new AppError('Target lender not found or invalid role', 404));
@@ -252,27 +288,54 @@ const submitInvoice = async (req, res, next) => {
             return next(new AppError('Invoice not found or access denied', 404));
         }
 
-        // 3. CORE RULE: Block submission if receivable is already financed
-        if (invoice.status === 'FINANCED') {
-            return next(new AppError('This invoice has already been financed and cannot be submitted again', 400, 'RECEIVABLE_ALREADY_FINANCED'));
-        }
-
-        // Double check fingerprint across system
-        const existingFinanced = await Invoice.findOne({
+        // ✅ ACTION 2 CHECK: Block duplicate submission to SAME lender
+        const existingSubmission = await LenderSubmission.findOne({
             receivableFingerprint: invoice.receivableFingerprint,
-            status: 'FINANCED'
+            lenderId: lenderId
         });
-        if (existingFinanced) {
-            return next(new AppError('This business obligation has already been financed elsewhere', 409, 'RECEIVABLE_ALREADY_FINANCED'));
+
+        if (existingSubmission) {
+            return next(new AppError(
+                'You have already submitted this business obligation to this lender',
+                409,
+                'DUPLICATE_LENDER_SUBMISSION'
+            ));
         }
 
-        // 4. Add to submittedTo (if not already there)
-        const updatedInvoice = await Invoice.findByIdAndUpdate(
+        // ❌ ACTION 3 RULE: Do NOT block based on financing status
+        // MSMEs can approach multiple lenders before any lender finances the receivable
+        // The financing check happens at the blockchain level when lender attempts to finance
+
+        // 3. Create new LenderSubmission record
+        try {
+            await LenderSubmission.create({
+                receivableFingerprint: invoice.receivableFingerprint,
+                invoiceId: invoice.invoiceId,
+                msmeId: req.user.id,
+                lenderId: lenderId,
+                status: 'SUBMITTED',
+                submittedAt: new Date(),
+            });
+        } catch (submissionError) {
+            // Handle duplicate key error (race condition)
+            if (submissionError.code === 11000) {
+                return next(new AppError(
+                    'This receivable has already been submitted to this lender',
+                    409,
+                    'DUPLICATE_LENDER_SUBMISSION'
+                ));
+            }
+            throw submissionError;
+        }
+
+        // 4. Update invoice submittedTo array (for backward compatibility)
+        await Invoice.findByIdAndUpdate(
             invoice._id,
             { $addToSet: { submittedTo: lenderId } },
             { new: true }
-        ).populate('submittedTo', 'name organization');
+        );
 
+        // 5. Audit log
         await createAuditLog({
             action: 'invoice_submitted',
             performedBy: req.user.id,
@@ -280,6 +343,7 @@ const submitInvoice = async (req, res, next) => {
             receivableFingerprint: invoice.receivableFingerprint,
             details: {
                 invoiceId: invoice.invoiceId,
+                receivableFingerprint: invoice.receivableFingerprint,
                 lenderId,
                 lenderOrganization: lender.organization
             },
@@ -288,8 +352,10 @@ const submitInvoice = async (req, res, next) => {
         });
 
         return sendResponse(res, 200, {
-            invoiceId: updatedInvoice.invoiceId,
-            submittedTo: updatedInvoice.submittedTo
+            invoiceId: invoice.invoiceId,
+            receivableFingerprint: invoice.receivableFingerprint,
+            lenderOrganization: lender.organization,
+            submittedAt: new Date()
         }, `Invoice successfully submitted to ${lender.organization}`);
     } catch (error) {
         next(error);

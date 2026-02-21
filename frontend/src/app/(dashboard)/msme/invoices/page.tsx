@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { invoiceAPI, blockchainAPI, UploadedInvoice } from "@/lib/api";
+import { invoiceAPI, authAPI, blockchainAPI, UploadedInvoice, LenderListItem, APIError } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { motion } from "framer-motion";
-import { ExternalLink, FileText, Search, RefreshCw, AlertCircle, Copy, Check, Link2, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ExternalLink, FileText, Search, RefreshCw, AlertCircle, Copy, Check, Link2, Loader2, Send, X } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -29,6 +29,13 @@ export default function MSMEInvoicesPage() {
     const [total, setTotal]       = useState(0);
     const [copiedId, setCopiedId]       = useState<string | null>(null);
     const [registering, setRegistering] = useState<string | null>(null);  // invoiceId being registered
+    
+    // Submit to lender modal
+    const [submitModalOpen, setSubmitModalOpen] = useState(false);
+    const [selectedInvoice, setSelectedInvoice] = useState<UploadedInvoice | null>(null);
+    const [lenders, setLenders] = useState<LenderListItem[]>([]);
+    const [selectedLenderId, setSelectedLenderId] = useState("");
+    const [submitting, setSubmitting] = useState(false);
 
     const copyToClipboard = (text: string, id: string) => {
         navigator.clipboard.writeText(text);
@@ -72,6 +79,52 @@ export default function MSMEInvoicesPage() {
     }, []);
 
     useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
+
+    // Fetch lenders for submit modal
+    useEffect(() => {
+        const token = localStorage.getItem("oneflow-token");
+        if (!token || token.startsWith("mock.")) return;
+        authAPI.getLenders(token)
+            .then(res => setLenders(res.data))
+            .catch(() => { /* optional */ });
+    }, []);
+
+    const handleOpenSubmitModal = (inv: UploadedInvoice) => {
+        setSelectedInvoice(inv);
+        setSelectedLenderId("");
+        setSubmitModalOpen(true);
+    };
+
+    const handleSubmitToLender = async () => {
+        if (!selectedInvoice || !selectedLenderId) return;
+        
+        const token = localStorage.getItem("oneflow-token") ?? "";
+        if (!token || token.startsWith("mock.")) {
+            toast.error("Real account required.");
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const res = await invoiceAPI.submitToLender(token, selectedInvoice.invoiceId, selectedLenderId);
+            toast.success("Invoice submitted!", {
+                description: `Sent to ${res.data.lenderOrganization}`,
+            });
+            setSubmitModalOpen(false);
+            // Refresh invoices to show updated submittedTo list
+            fetchInvoices();
+        } catch (err: unknown) {
+            let msg = "Submission failed";
+            if (err instanceof APIError && err.errorCode === "DUPLICATE_LENDER_SUBMISSION") {
+                msg = "This invoice was already submitted to this lender.";
+            } else if (err instanceof Error) {
+                msg = err.message;
+            }
+            toast.error("Submission failed", { description: msg });
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     const filtered = invoices.filter(inv => {
         const matchStatus = filter === "ALL" || inv.status === filter;
@@ -150,21 +203,23 @@ export default function MSMEInvoicesPage() {
                                 <th className="text-left">Amount</th>
                                 <th className="text-left">Date</th>
                                 <th className="text-left">Status</th>
+                                <th className="text-left hidden lg:table-cell">Submitted To</th>
                                 <th className="text-left hidden md:table-cell">CID</th>
                                 <th className="text-left hidden md:table-cell">IPFS</th>
                                 <th className="text-left hidden sm:table-cell">On-Chain</th>
+                                <th className="text-left">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr><td colSpan={8} className="py-16 text-center">
+                                <tr><td colSpan={10} className="py-16 text-center">
                                     <div className="flex flex-col items-center gap-3">
                                         <div className="w-7 h-7 rounded-full border-2 border-mg-dim border-t-mg-lavender animate-spin" />
                                         <span className="text-xs text-mg-dim animate-pulse">Fetching invoices…</span>
                                     </div>
                                 </td></tr>
                             ) : filtered.length === 0 ? (
-                                <tr><td colSpan={8} className="py-16 text-center">
+                                <tr><td colSpan={10} className="py-16 text-center">
                                     <div className="flex flex-col items-center gap-3 text-mg-dim">
                                         <FileText className="w-8 h-8 opacity-40" />
                                         <span className="text-sm italic">
@@ -199,6 +254,21 @@ export default function MSMEInvoicesPage() {
                                         {formatDate(inv.createdAt)}
                                     </td>
                                     <td><StatusBadge status={inv.status} /></td>
+                                    <td className="hidden lg:table-cell">
+                                        {inv.submittedTo && inv.submittedTo.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                                {inv.submittedTo.map(lender => (
+                                                    <span key={lender._id}
+                                                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-mg-cosmic/10 text-mg-lavender border border-mg-lavender/20"
+                                                        title={lender.organization}>
+                                                        {lender.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-mg-dim italic">None</span>
+                                        )}
+                                    </td>
                                     <td className="hidden md:table-cell">
                                         {inv.ipfsCID ? (
                                             <button
@@ -257,6 +327,13 @@ export default function MSMEInvoicesPage() {
                                             </button>
                                         )}
                                     </td>
+                                    <td>
+                                        <button
+                                            onClick={() => handleOpenSubmitModal(inv)}
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all hover:bg-mg-cosmic/10 hover:text-mg-lavender border border-mg-lavender/20 hover:border-mg-lavender/40 text-mg-muted whitespace-nowrap">
+                                            <Send className="w-3 h-3" /> Submit to Lender
+                                        </button>
+                                    </td>
                                 </motion.tr>
                             ))}
                         </tbody>
@@ -270,6 +347,103 @@ export default function MSMEInvoicesPage() {
                     </div>
                 )}
             </div>
+
+            {/* Submit to Lender Modal */}
+            <AnimatePresence>
+                {submitModalOpen && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setSubmitModalOpen(false)}
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+                        />
+                        {/* Modal */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md">
+                            <div className="mg-card rounded-2xl p-6 space-y-4">
+                                {/* Header */}
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-mg-silver">Submit to Lender</h3>
+                                        <p className="text-xs text-mg-dim mt-1">
+                                            Invoice: {selectedInvoice?.invoiceId}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setSubmitModalOpen(false)}
+                                        className="p-1.5 rounded-lg hover:bg-mg-elevated transition-colors text-mg-dim hover:text-mg-silver">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                {/* Already submitted list */}
+                                {selectedInvoice?.submittedTo && selectedInvoice.submittedTo.length > 0 && (
+                                    <div className="p-3 rounded-lg bg-mg-elevated/50 border border-mg-lavender/10">
+                                        <p className="text-[10px] uppercase tracking-widest font-semibold text-mg-dim mb-2">
+                                            Already Submitted To
+                                        </p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {selectedInvoice.submittedTo.map(lender => (
+                                                <span key={lender._id}
+                                                    className="inline-flex items-center px-2 py-1 rounded text-[10px] font-semibold bg-mg-cosmic/15 text-mg-lavender">
+                                                    {lender.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Lender selection */}
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-semibold text-mg-silver">
+                                        Select Lender
+                                    </label>
+                                    <select
+                                        value={selectedLenderId}
+                                        onChange={e => setSelectedLenderId(e.target.value)}
+                                        disabled={submitting}
+                                        className="w-full px-3 py-2 rounded-lg bg-mg-elevated border border-mg-lavender/10 text-mg-silver text-sm focus:outline-none focus:border-mg-cosmic transition-colors disabled:opacity-50">
+                                        <option value="">— Select a lender —</option>
+                                        {lenders
+                                            .filter(l => !selectedInvoice?.submittedTo?.some(s => s._id === l._id))
+                                            .map(l => (
+                                                <option key={l._id} value={l._id}>
+                                                    {l.name}{l.organization ? ` — ${l.organization}` : ""}
+                                                </option>
+                                            ))}
+                                    </select>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        onClick={() => setSubmitModalOpen(false)}
+                                        disabled={submitting}
+                                        className="flex-1 px-4 py-2 rounded-lg border border-mg-lavender/20 text-mg-muted font-semibold text-sm hover:border-mg-lavender/40 transition-colors disabled:opacity-50">
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSubmitToLender}
+                                        disabled={!selectedLenderId || submitting}
+                                        className="flex-1 px-4 py-2 rounded-lg bg-mg-cosmic text-white font-semibold text-sm hover:bg-mg-cosmic/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                                        {submitting ? (
+                                            <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</>
+                                        ) : (
+                                            <><Send className="w-4 h-4" /> Submit</>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

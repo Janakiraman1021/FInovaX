@@ -1,4 +1,5 @@
 const Invoice = require('../models/Invoice');
+const LenderSubmission = require('../models/LenderSubmission');
 const AppError = require('../utils/AppError');
 const { verifyInvoiceOnChain, markInvoiceFinancedOnChain, registerReceivableOnChain, verifyReceivableOnChain, markReceivableFinancedOnChain } = require('../services/blockchain.service');
 const { createAuditLog } = require('../services/audit.service');
@@ -6,28 +7,67 @@ const { sendResponse } = require('../utils/response');
 
 /**
  * GET /lender/invoices
- * List all invoices — lender can filter by status.
+ * List all invoices submitted to this lender.
+ * 
+ * ACTION 5 Implementation:
+ * - Shows invoices where lender has a submission record
+ * - Includes blockchain status check to show accurate financing state
  */
 const getAllInvoices = async (req, res, next) => {
     try {
         const { status, page = 1, limit = 20 } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        // STRICT RBAC: Only see invoices explicitly submitted to this lender
-        const filter = { submittedTo: { $in: [req.user.id] } };
-        if (status) filter.status = status.toUpperCase();
+        // Get all submissions for this lender
+        const submissionFilter = { lenderId: req.user.id };
+        if (status) submissionFilter.status = status.toUpperCase();
 
-        const [invoices, total] = await Promise.all([
-            Invoice.find(filter)
-                .populate('uploadedBy', 'name organization')
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(parseInt(limit)),
-            Invoice.countDocuments(filter),
-        ]);
+        const submissions = await LenderSubmission.find(submissionFilter)
+            .sort({ submittedAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        const total = await LenderSubmission.countDocuments(submissionFilter);
+
+        // Get invoices for these submissions
+        const invoiceIds = submissions.map(s => s.invoiceId);
+        const invoices = await Invoice.find({ invoiceId: { $in: invoiceIds } })
+            .populate('uploadedBy', 'name organization')
+            .lean();
+
+        // Create a map for quick lookup
+        const invoiceMap = new Map(invoices.map(inv => [inv.invoiceId, inv]));
+
+        // Merge submission data with invoice data and check blockchain status
+        const enrichedInvoices = await Promise.all(submissions.map(async (sub) => {
+            const invoice = invoiceMap.get(sub.invoiceId);
+            if (!invoice) return null;
+
+            // Check on-chain receivable status for ACTION 5
+            let isReceivableFinanced = false;
+            try {
+                const bcStatus = await verifyReceivableOnChain(invoice.receivableFingerprint);
+                isReceivableFinanced = bcStatus?.financed || false;
+            } catch (err) {
+                console.warn('Blockchain check failed:', err.message);
+            }
+
+            // Determine actual status based on blockchain truth
+            const actualStatus = isReceivableFinanced ? 'FINANCED' : sub.status;
+
+            return {
+                ...invoice,
+                submissionStatus: actualStatus,
+                submittedAt: sub.submittedAt,
+                isReceivableFinanced,
+                canFinance: !isReceivableFinanced && actualStatus === 'SUBMITTED',
+            };
+        }));
+
+        const validInvoices = enrichedInvoices.filter(Boolean);
 
         return sendResponse(res, 200, {
-            invoices,
+            invoices: validInvoices,
             pagination: {
                 total,
                 page: parseInt(page),
@@ -112,22 +152,36 @@ const verifyInvoice = async (req, res, next) => {
 
 /**
  * POST /api/lender/finance/:invoiceId
- * Finance an invoice — marks on-chain + DB, blocks duplicates.
+ * Finance an invoice — marks receivable on-chain, blocks duplicates.
+ * 
+ * ACTION 4 & 6 Implementation:
+ * - Calls blockchain financeReceivable(receivableFingerprint)
+ * - Blockchain enforces single-lender rule
+ * - Updates all submissions with same receivableFingerprint to FINANCED
+ * - ACTION 6: Catches blockchain revert and returns RECEIVABLE_ALREADY_FINANCED
  */
 const financeInvoice = async (req, res, next) => {
     try {
         const { invoiceId } = req.params;
 
-        // 1. Validate invoice exists and is assigned to this lender
-        const invoice = await Invoice.findOne({
-            invoiceId: invoiceId,
-            submittedTo: { $in: [req.user.id] }
-        });
+        // 1. Validate invoice exists and is submitted to this lender
+        const invoice = await Invoice.findOne({ invoiceId });
 
         if (!invoice) {
-            return next(new AppError('Invoice not found or not submitted to you', 404));
+            return next(new AppError('Invoice not found', 404));
         }
 
+        // Verify lender has a submission for this receivable
+        const lenderSubmission = await LenderSubmission.findOne({
+            receivableFingerprint: invoice.receivableFingerprint,
+            lenderId: req.user.id
+        });
+
+        if (!lenderSubmission) {
+            return next(new AppError('This invoice was not submitted to you', 403));
+        }
+
+        // 2. Check if already financed in local DB
         if (invoice.status === 'FINANCED') {
             return next(new AppError('Invoice is already marked as financed', 400, 'INVOICE_ALREADY_FINANCED'));
         }
@@ -135,125 +189,147 @@ const financeInvoice = async (req, res, next) => {
             return next(new AppError('This invoice is BLOCKED due to duplicate obligation financing', 409, 'RECEIVABLE_ALREADY_FINANCED'));
         }
 
-        // Block duplicate financing (Receivable level)
-        const existingFinanced = await Invoice.findOne({
-            receivableFingerprint: invoice.receivableFingerprint,
-            status: 'FINANCED'
-        });
-        if (existingFinanced) {
-            // Penalize for attempting to finance an already financed receivable
-            const { updateTrustScore } = require('../services/trust.service');
-            await updateTrustScore(req.user.id, 'INVOICE_BLOCKED', {
-                action: 'blocked_finance_attempt',
-                fingerprint: invoice.receivableFingerprint
-            });
-            return next(new AppError('The business obligation for this invoice has already been financed', 409, 'RECEIVABLE_ALREADY_FINANCED'));
+        // 3. Check blockchain status before attempting
+        let onChainReceivableStatus;
+        try {
+            onChainReceivableStatus = await verifyReceivableOnChain(invoice.receivableFingerprint);
+            if (onChainReceivableStatus?.financed) {
+                // Update local records to match blockchain truth
+                await Promise.all([
+                    Invoice.updateMany(
+                        { receivableFingerprint: invoice.receivableFingerprint },
+                        { $set: { status: 'BLOCKED' } }
+                    ),
+                    LenderSubmission.updateMany(
+                        { receivableFingerprint: invoice.receivableFingerprint },
+                        { $set: { status: 'FINANCED' } }
+                    )
+                ]);
+
+                // Log the duplicate attempt for audit (ACTION 6)
+                await createAuditLog({
+                    action: 'DUPLICATE_FINANCING_ATTEMPT',
+                    performedBy: req.user.id,
+                    invoiceId: invoice._id,
+                    receivableFingerprint: invoice.receivableFingerprint,
+                    details: {
+                        invoiceId: invoice.invoiceId,
+                        receivableFingerprint: invoice.receivableFingerprint,
+                        reason: 'Receivable already financed on blockchain'
+                    },
+                    ipAddress: req.ip,
+                    requestId: req.requestId,
+                });
+
+                return next(new AppError(
+                    'The business obligation for this invoice has already been financed',
+                    409,
+                    'RECEIVABLE_ALREADY_FINANCED'
+                ));
+            }
+        } catch (checkError) {
+            console.warn('Blockchain status check failed, proceeding with caution:', checkError.message);
         }
 
-        // Check on-chain status
-        const [onChainStatus, onChainReceivableStatus] = await Promise.all([
-            verifyInvoiceOnChain(invoice.invoiceHash),
-            verifyReceivableOnChain(invoice.receivableFingerprint)
-        ]);
-
-        if (!onChainStatus || !onChainStatus.registered) {
-            return next(new AppError('Invoice must be registered on the blockchain before financing', 422, 'UNREGISTERED_INVOICE'));
-        }
-        if (onChainStatus.financed || (onChainReceivableStatus && onChainReceivableStatus.financed)) {
-            return next(new AppError('This obligation is already marked as financed on the blockchain', 409, 'RECEIVABLE_ALREADY_FINANCED'));
-        }
-
-        // Mark on-chain
-        let docBlockchainResult = null;
+        // 4. ACTION 4: Attempt to finance on blockchain
         let receivableBlockchainResult = null;
         try {
-            // Anchor both document AND receivable fingerprint
-            [docBlockchainResult, receivableBlockchainResult] = await Promise.all([
-                markInvoiceFinancedOnChain(invoice.invoiceHash),
-                markReceivableFinancedOnChain(invoice.receivableFingerprint)
-            ]);
+            receivableBlockchainResult = await markReceivableFinancedOnChain(invoice.receivableFingerprint);
         } catch (bcError) {
             console.error('Blockchain finance marking failed:', bcError.message);
+
+            // ACTION 6: Catch specific revert for already financed
+            if (bcError.message.includes('already financed') || 
+                bcError.message.includes('AlreadyFinanced') ||
+                bcError.message.includes('ALREADY_FINANCED')) {
+
+                // Log the attempt for auditor visibility
+                await createAuditLog({
+                    action: 'DUPLICATE_FINANCING_ATTEMPT',
+                    performedBy: req.user.id,
+                    invoiceId: invoice._id,
+                    receivableFingerprint: invoice.receivableFingerprint,
+                    details: {
+                        invoiceId: invoice.invoiceId,
+                        receivableFingerprint: invoice.receivableFingerprint,
+                        blockchainError: bcError.message
+                    },
+                    ipAddress: req.ip,
+                    requestId: req.requestId,
+                });
+
+                // Update local records
+                await Promise.all([
+                    Invoice.updateMany(
+                        { receivableFingerprint: invoice.receivableFingerprint },
+                        { $set: { status: 'BLOCKED' } }
+                    ),
+                    LenderSubmission.updateMany(
+                        { receivableFingerprint: invoice.receivableFingerprint },
+                        { $set: { status: 'FINANCED' } }
+                    )
+                ]);
+
+                return next(new AppError(
+                    'The business obligation for this invoice has already been financed by another lender',
+                    409,
+                    'RECEIVABLE_ALREADY_FINANCED'
+                ));
+            }
+
+            // Other blockchain errors
             return next(new AppError(`Blockchain transaction failed: ${bcError.message}`, 500, 'BLOCKCHAIN_TX_FAILED'));
         }
 
+        // 5. Update local database - mark this invoice and all associated records
         try {
             const financedAt = new Date();
+
+            // Update the specific invoice
             invoice.status = 'FINANCED';
             invoice.financedBy = req.user.id;
             invoice.financedAt = financedAt;
-            invoice.financeTxHash = docBlockchainResult?.txHash || null;
+            invoice.financeTxHash = receivableBlockchainResult?.txHash || null;
             await invoice.save();
 
-            // Step A: Propagate FINANCED to all uploads of the same file (same ipfsCID)
-            if (invoice.ipfsCID) {
-                await Invoice.updateMany(
-                    {
-                        ipfsCID: invoice.ipfsCID,
-                        _id: { $ne: invoice._id }
-                    },
-                    {
-                        $set: {
-                            status: 'FINANCED',
-                            financedBy: req.user.id,
-                            financedAt,
-                            financeTxHash: docBlockchainResult?.txHash || null
-                        }
-                    }
-                );
-            }
-
-            // Step B: Block all other invoices sharing the same business obligation (receivableFingerprint)
-            //         that are NOT already FINANCED (covers different-file but same-obligation fraud attempts)
-            // 1. Update Trust Score
-            const { updateTrustScore } = require('../services/trust.service');
-            await updateTrustScore(invoice.uploadedBy, 'FINANCE_SUCCESS', { invoiceId: invoice.invoiceId });
-
-            // Mark ALL OTHER invoices with same receivableFingerprint as BLOCKED
+            // Update ALL invoices with same receivableFingerprint to FINANCED
             await Invoice.updateMany(
                 {
                     receivableFingerprint: invoice.receivableFingerprint,
-                    status: { $ne: 'FINANCED' }
+                    _id: { $ne: invoice._id }
                 },
                 {
                     $set: {
-                        status: 'BLOCKED',
+                        status: 'FINANCED',
+                        financedBy: req.user.id,
+                        financedAt,
                         financeTxHash: receivableBlockchainResult?.txHash || null
                     }
                 }
             );
 
-            // Step C: Propagate BLOCKED to ipfsCID siblings of any newly-blocked invoices
-            //         (e.g. the same file was uploaded under a different fingerprint and got blocked)
-            const blockedSiblings = await Invoice.find(
+            // Update ALL lender submissions with same receivableFingerprint
+            await LenderSubmission.updateMany(
+                { receivableFingerprint: invoice.receivableFingerprint },
                 {
-                    receivableFingerprint: invoice.receivableFingerprint,
-                    status: 'BLOCKED',
-                    ipfsCID: { $nin: [null, invoice.ipfsCID] }
-                },
-                { ipfsCID: 1 }
-            );
-            const blockedCIDs = [...new Set(blockedSiblings.map(i => i.ipfsCID).filter(Boolean))];
-            if (blockedCIDs.length > 0) {
-                await Invoice.updateMany(
-                    {
-                        ipfsCID: { $in: blockedCIDs },
-                        status: { $ne: 'FINANCED' }
-                    },
-                    {
-                        $set: {
-                            status: 'BLOCKED',
-                            financeTxHash: receivableBlockchainResult?.txHash || null
-                        }
+                    $set: {
+                        status: 'FINANCED',
+                        financedAt,
+                        financedBy: req.user.id
                     }
-                );
-            }
+                }
+            );
+
+            // Update Trust Score
+            const { updateTrustScore } = require('../services/trust.service');
+            await updateTrustScore(invoice.uploadedBy, 'FINANCE_SUCCESS', { invoiceId: invoice.invoiceId });
+
         } catch (dbError) {
-            console.error(`[CRITICAL INCONSISTENCY] Blockchain success (${docBlockchainResult?.txHash}), but DB update failed:`, dbError.message);
-            // In a real bank app, this would trigger an alert or a compensation logic
+            console.error(`[CRITICAL INCONSISTENCY] Blockchain success (${receivableBlockchainResult?.txHash}), but DB update failed:`, dbError.message);
             return next(new AppError('Blockchain transaction completed, but local database update failed. Please contact support.', 500, 'DATABASE_SYNC_ERROR'));
         }
 
+        // 6. Audit logs
         await createAuditLog({
             action: 'RECEIVABLE_FINANCED',
             performedBy: req.user.id,
@@ -273,7 +349,7 @@ const financeInvoice = async (req, res, next) => {
             performedBy: req.user.id,
             invoiceId: invoice._id,
             receivableFingerprint: invoice.receivableFingerprint,
-            txHash: docBlockchainResult?.txHash || null,
+            txHash: receivableBlockchainResult?.txHash || null,
             details: {
                 invoiceId: invoice.invoiceId,
                 amount: invoice.amount,
@@ -291,8 +367,9 @@ const financeInvoice = async (req, res, next) => {
                 financedBy: req.user.id,
                 financedAt: invoice.financedAt,
                 financeTxHash: invoice.financeTxHash,
+                receivableFingerprint: invoice.receivableFingerprint,
             },
-        }, 'Invoice financed successfully');
+        }, 'Invoice financed successfully. Receivable locked on blockchain.');
     } catch (error) {
         next(error);
     }
@@ -300,7 +377,7 @@ const financeInvoice = async (req, res, next) => {
 
 /**
  * PATCH /api/lender/invoices/:invoiceId/status
- * Update invoice status — propagates to all invoices with same ipfsCID
+ * Update invoice status — propagates to all invoices and submissions with same receivableFingerprint
  */
 const updateInvoiceStatus = async (req, res, next) => {
     try {
@@ -313,14 +390,19 @@ const updateInvoiceStatus = async (req, res, next) => {
         }
         const newStatus = status.toUpperCase();
 
-        // 1. Find invoice and verify lender has access
-        const invoice = await Invoice.findOne({
-            invoiceId,
-            submittedTo: { $in: [req.user.id] }
+        // 1. Find invoice and verify lender has access via submission
+        const invoice = await Invoice.findOne({ invoiceId });
+        if (!invoice) {
+            return next(new AppError('Invoice not found', 404));
+        }
+
+        const lenderSubmission = await LenderSubmission.findOne({
+            receivableFingerprint: invoice.receivableFingerprint,
+            lenderId: req.user.id
         });
 
-        if (!invoice) {
-            return next(new AppError('Invoice not found or not submitted to you', 404));
+        if (!lenderSubmission) {
+            return next(new AppError('This invoice was not submitted to you', 403));
         }
 
         const oldStatus = invoice.status;
@@ -328,28 +410,29 @@ const updateInvoiceStatus = async (req, res, next) => {
             return sendResponse(res, 200, { invoiceId, status: newStatus, updated: 0 }, 'Status unchanged');
         }
 
-        // 2. Update the target invoice
-        invoice.status = newStatus;
+        // 2. Update all invoices with same receivableFingerprint
+        const updateFields = { status: newStatus };
         if (newStatus === 'FINANCED') {
-            invoice.financedBy = req.user.id;
-            invoice.financedAt = new Date();
+            updateFields.financedBy = req.user.id;
+            updateFields.financedAt = new Date();
         }
-        await invoice.save();
 
-        // 3. Propagate status to all invoices with the same ipfsCID
-        let siblingCount = 0;
-        if (invoice.ipfsCID) {
-            const updateFields = { status: newStatus };
-            if (newStatus === 'FINANCED') {
-                updateFields.financedBy = req.user.id;
-                updateFields.financedAt = new Date();
-            }
-            const result = await Invoice.updateMany(
-                { ipfsCID: invoice.ipfsCID, _id: { $ne: invoice._id } },
-                { $set: updateFields }
-            );
-            siblingCount = result.modifiedCount || 0;
+        const invoiceUpdateResult = await Invoice.updateMany(
+            { receivableFingerprint: invoice.receivableFingerprint },
+            { $set: updateFields }
+        );
+
+        // 3. Update all lender submissions with same receivableFingerprint
+        const submissionUpdateFields = { status: newStatus };
+        if (newStatus === 'FINANCED') {
+            submissionUpdateFields.financedBy = req.user.id;
+            submissionUpdateFields.financedAt = new Date();
         }
+
+        const submissionUpdateResult = await LenderSubmission.updateMany(
+            { receivableFingerprint: invoice.receivableFingerprint },
+            { $set: submissionUpdateFields }
+        );
 
         // 4. Audit log
         await createAuditLog({
@@ -359,10 +442,11 @@ const updateInvoiceStatus = async (req, res, next) => {
             receivableFingerprint: invoice.receivableFingerprint,
             details: {
                 invoiceId: invoice.invoiceId,
+                receivableFingerprint: invoice.receivableFingerprint,
                 oldStatus,
                 newStatus,
-                siblingCount,
-                ipfsCID: invoice.ipfsCID,
+                invoicesUpdated: invoiceUpdateResult.modifiedCount || 0,
+                submissionsUpdated: submissionUpdateResult.modifiedCount || 0,
             },
             ipAddress: req.ip,
             requestId: req.requestId,
@@ -370,9 +454,11 @@ const updateInvoiceStatus = async (req, res, next) => {
 
         return sendResponse(res, 200, {
             invoiceId: invoice.invoiceId,
+            receivableFingerprint: invoice.receivableFingerprint,
             status: newStatus,
-            updated: 1 + siblingCount,
-        }, `Status updated to ${newStatus}. ${siblingCount} sibling invoice(s) also updated.`);
+            invoicesUpdated: invoiceUpdateResult.modifiedCount || 0,
+            submissionsUpdated: submissionUpdateResult.modifiedCount || 0,
+        }, `Status updated to ${newStatus} for all related invoices and submissions.`);
     } catch (error) {
         next(error);
     }

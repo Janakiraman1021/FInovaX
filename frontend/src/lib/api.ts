@@ -8,6 +8,14 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+/** Custom error class that includes backend error codes */
+export class APIError extends Error {
+    constructor(public message: string, public errorCode: string, public statusCode?: number) {
+        super(message);
+        this.name = "APIError";
+    }
+}
+
 export interface AuthUser {
     id: string;
     name: string;
@@ -32,7 +40,7 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
         headers: { "Content-Type": "application/json", ...(optHeaders ?? {}) },
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Request failed");
+    if (!res.ok) throw new APIError(data.message || "Request failed", data.errorCode || "ERROR", res.status);
     return data as T;
 }
 
@@ -74,6 +82,7 @@ export const authAPI = {
 export interface UploadedInvoice {
     invoiceId: string;
     invoiceHash: string;
+    receivableFingerprint?: string;
     ipfsCID: string;
     uploadedBy: string;
     status: string;
@@ -84,6 +93,7 @@ export interface UploadedInvoice {
     /** Blockchain tx hash from on-chain registration; null until registered */
     blockchainTxHash: string | null;
     createdAt: string;
+    submittedTo?: Array<{ _id: string; name: string; organization: string }>;
 }
 
 // Multipart upload — do NOT set Content-Type, browser sets it with boundary
@@ -94,7 +104,7 @@ async function apiUpload<T>(path: string, token: string, formData: FormData): Pr
         body: formData,
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Upload failed");
+    if (!res.ok) throw new APIError(data.message || "Upload failed", data.errorCode || "ERROR", res.status);
     return data as T;
 }
 
@@ -115,6 +125,16 @@ export const invoiceAPI = {
             { headers: { Authorization: `Bearer ${token}` } }
         );
     },
+    /** POST /api/v1/invoices/:invoiceId/submit — submit invoice to additional lender */
+    submitToLender: (token: string, invoiceId: string, lenderId: string) =>
+        apiRequest<{ success: boolean; message: string; data: { invoiceId: string; receivableFingerprint: string; lenderOrganization: string } }>(
+            `/api/v1/invoices/${encodeURIComponent(invoiceId)}/submit`,
+            {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ lenderId }),
+            }
+        ),
 };
 
 export interface MSMEProfile {
@@ -202,6 +222,7 @@ export interface LenderInvoice {
     description?: string;
     status: string;
     invoiceHash: string;
+    receivableFingerprint?: string;
     ipfsCID: string;
     originalFileName?: string;
     uploadedBy: { _id: string; name: string; email: string; organization: string };
@@ -210,6 +231,11 @@ export interface LenderInvoice {
     blockchainTxHash: string | null;
     financeTxHash: string | null;
     createdAt: string;
+    // New fields from backend submission tracking
+    submissionStatus?: string;
+    submittedAt?: string;
+    isReceivableFinanced?: boolean;
+    canFinance?: boolean;
 }
 
 export interface LenderVerifyResult {

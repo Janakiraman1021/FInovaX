@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { invoiceAPI, authAPI, UploadedInvoice, LenderListItem } from "@/lib/api";
+import { invoiceAPI, authAPI, UploadedInvoice, LenderListItem, APIError } from "@/lib/api";
 import { toast } from "sonner";
 
 const CURRENCIES = ["INR", "USD", "EUR", "GBP", "AED"] as const;
@@ -122,11 +122,26 @@ export const InvoiceUploader = () => {
             setProgress(100);
             setResult(res.data.invoice);
             setStage("done");
+            
+            const rfp = res.data.invoice.receivableFingerprint;
             toast.success("Invoice sealed on ledger!", {
-                description: `Hash: ${res.data.invoice.invoiceHash.slice(0, 16)}…`,
+                description: rfp 
+                    ? `Receivable: ${rfp.slice(0, 16)}…` 
+                    : `Hash: ${res.data.invoice.invoiceHash.slice(0, 16)}…`,
             });
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Upload failed. Please try again.";
+            let msg = "Upload failed. Please try again.";
+            
+            if (err instanceof APIError) {
+                if (err.errorCode === "DUPLICATE_FILE_HASH") {
+                    msg = "This file was already uploaded. Each document can only be registered once.";
+                } else {
+                    msg = err.message;
+                }
+            } else if (err instanceof Error) {
+                msg = err.message;
+            }
+            
             setErrMsg(msg);
             setStage("error");
             toast.error("Upload failed", { description: msg });
@@ -153,6 +168,7 @@ export const InvoiceUploader = () => {
                             { label: "Invoice ID", value: result.invoiceId, mono: true },
                             { label: "Status", value: result.status, mono: false },
                             { label: "Amount", value: `${result.currency} ${result.amount.toLocaleString("en-IN")}`, mono: false },
+                            ...(result.receivableFingerprint ? [{ label: "Receivable Fingerprint", value: result.receivableFingerprint, mono: true, truncate: true }] : []),
                             { label: "IPFS CID", value: result.ipfsCID, mono: true, truncate: true },
                             { label: "SHA-256 Hash", value: result.invoiceHash, mono: true, truncate: true },
                         ].map(row => (

@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { lenderAPI, LenderInvoice } from "@/lib/api";
+import { lenderAPI, LenderInvoice, APIError } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { BookOpen, ExternalLink, Search, RefreshCw, AlertCircle, ShieldCheck, Copy, Check, Loader2, Banknote } from "lucide-react";
+import { BookOpen, ExternalLink, Search, RefreshCw, AlertCircle, ShieldCheck, Copy, Check, Loader2, Banknote, Lock } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -65,21 +65,28 @@ export default function LenderLoans() {
     const handleFinance = async (inv: LenderInvoice) => {
         const token = localStorage.getItem("oneflow-token") ?? "";
         if (!token || token.startsWith("mock.")) { toast.error("Real lender account required."); return; }
+        
+        if (!inv.canFinance) {
+            toast.error("Cannot finance", { description: "This receivable is already financed by another lender." });
+            return;
+        }
+        
         setUpdatingStatus(inv.invoiceId);
         try {
             const res = await lenderAPI.updateInvoiceStatus(token, inv.invoiceId, "FINANCED");
-            setInvoices(prev =>
-                prev.map(i =>
-                    i.invoiceId === inv.invoiceId
-                        ? { ...i, status: "FINANCED" as const }
-                        : i.ipfsCID && i.ipfsCID === inv.ipfsCID
-                        ? { ...i, status: "FINANCED" as const }
-                        : i
-                )
-            );
             toast.success(res.message ?? "Invoice financed successfully");
+            // Refresh to get updated canFinance flags for all invoices
+            fetchInvoices();
         } catch (err: unknown) {
-            toast.error("Finance failed", { description: err instanceof Error ? err.message : "Unknown error" });
+            let msg = "Unknown error";
+            if (err instanceof APIError && err.errorCode === "RECEIVABLE_ALREADY_FINANCED") {
+                msg = "This receivable was just financed by another lender. Your attempt has been logged.";
+            } else if (err instanceof Error) {
+                msg = err.message;
+            }
+            toast.error("Finance failed", { description: msg });
+            // Refresh to sync state
+            fetchInvoices();
         } finally {
             setUpdatingStatus(null);
         }
@@ -212,16 +219,26 @@ export default function LenderLoans() {
                                                     </a>
                                                 )}
                                                 {inv.status === "UPLOADED" && (
-                                                    <button
-                                                        onClick={() => handleFinance(inv)}
-                                                        disabled={updatingStatus === inv.invoiceId}
-                                                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                                                        style={{ background: "rgba(5,150,105,0.10)", border: "1px solid rgba(5,150,105,0.28)", color: "#059669" }}>
-                                                        {updatingStatus === inv.invoiceId
-                                                            ? <Loader2 className="w-3 h-3 animate-spin" />
-                                                            : <Banknote className="w-3 h-3" />}
-                                                        Finance
-                                                    </button>
+                                                    inv.isReceivableFinanced ? (
+                                                        <span
+                                                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                                                            style={{ background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.25)", color: "#dc2626" }}
+                                                            title="This receivable is already financed by another lender">
+                                                            <Lock className="w-3 h-3" /> Financed
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleFinance(inv)}
+                                                            disabled={updatingStatus === inv.invoiceId || !inv.canFinance}
+                                                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            style={{ background: "rgba(5,150,105,0.10)", border: "1px solid rgba(5,150,105,0.28)", color: "#059669" }}
+                                                            title={!inv.canFinance ? "Cannot finance: receivable already financed" : "Finance this invoice"}>
+                                                            {updatingStatus === inv.invoiceId
+                                                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                                                : <Banknote className="w-3 h-3" />}
+                                                            Finance
+                                                        </button>
+                                                    )
                                                 )}
                                             </div>
                                         </td>
