@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, ShieldCheck, ShieldAlert, ShieldX, Cpu, X,
+import { ShieldCheck, ShieldAlert, ShieldX, ShieldOff, Cpu, X,
          BadgeCheck, User, Building2, DollarSign, Hash,
          Copy, Check, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,7 +12,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 
 type ResultState = {
-    kind: "verified" | "financed" | "not_found" | "error";
+    kind: "verified" | "financed" | "blocked" | "not_found" | "error";
     data?: LenderVerifyResult;
     message?: string;
 };
@@ -93,12 +93,16 @@ export const HashVerifier = () => {
                 return;
             }
             
-            if (d.verification.duplicate || d.verification.financed) {
+            const status = d.invoice.status as string;
+            if (status === "BLOCKED") {
+                setResult({ kind: "blocked", data: d });
+                toast.error("Invoice is Blocked", { description: "This invoice has been blocked — a duplicate obligation was financed elsewhere." });
+            } else if (status === "FINANCED" || d.verification.duplicate || d.verification.financed) {
                 setResult({ kind: "financed", data: d });
-                toast.error("Duplicate financing detected", { description: "This invoice is already financed on the ledger." });
+                toast.warning("Invoice already financed", { description: "This invoice has already been financed on the ledger." });
             } else {
                 setResult({ kind: "verified", data: d });
-                toast.success("Invoice authenticated", { description: `Hash verified · Status: ${d.invoice.status || 'Unknown'}` });
+                toast.success("Invoice authenticated", { description: `Hash verified · Status: ${status || "UPLOADED"}` });
             }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Verification failed";
@@ -121,13 +125,15 @@ export const HashVerifier = () => {
     };
 
     const ui = result
-        ? result.kind === "financed"
-            ? { bg: "rgba(220,38,38,0.08)",  border: "rgba(220,38,38,0.28)",  Icon: ShieldX,     iconColor: "#dc2626", title: "Fraud Alert — Already Financed" }
+        ? result.kind === "blocked"
+            ? { bg: "rgba(220,38,38,0.10)",  border: "rgba(220,38,38,0.35)",  Icon: ShieldOff,   iconColor: "#dc2626", title: "⛔ Fraud Alert — Invoice Blocked" }
+            : result.kind === "financed"
+            ? { bg: "rgba(234,179,8,0.09)",  border: "rgba(234,179,8,0.30)",  Icon: ShieldX,     iconColor: "#ca8a04", title: "✓ Invoice Already Financed" }
             : result.kind === "verified"
-            ? { bg: "rgba(5,150,105,0.08)",   border: "rgba(5,150,105,0.28)",   Icon: ShieldCheck, iconColor: "#059669", title: "Integrity Verified" }
+            ? { bg: "rgba(5,150,105,0.08)",  border: "rgba(5,150,105,0.28)",  Icon: ShieldCheck, iconColor: "#059669", title: "✓ Integrity Verified — Eligible" }
             : result.kind === "not_found"
-            ? { bg: "rgba(217,119,6,0.08)",   border: "rgba(217,119,6,0.25)",   Icon: ShieldAlert, iconColor: "#d97706", title: "Hash Not Found" }
-            : { bg: "rgba(220,38,38,0.06)",   border: "rgba(220,38,38,0.18)",   Icon: ShieldAlert, iconColor: "#dc2626", title: "Error" }
+            ? { bg: "rgba(217,119,6,0.08)",  border: "rgba(217,119,6,0.25)",  Icon: ShieldAlert, iconColor: "#d97706", title: "Hash Not Found" }
+            : { bg: "rgba(220,38,38,0.06)",  border: "rgba(220,38,38,0.18)",  Icon: ShieldAlert, iconColor: "#dc2626", title: "Error" }
         : null;
 
     return (
@@ -295,7 +301,13 @@ export const HashVerifier = () => {
                                             {result.data.verification.registeredOnChain ? "✓ On-chain registered" : "⚠ Not yet on-chain"}
                                         </span>
                                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                                            style={{ background: "rgba(74,78,143,0.10)", color: "#8b8fc8", border: "1px solid rgba(74,78,143,0.22)" }}>
+                                            style={
+                                                result.data.invoice.status === "BLOCKED"
+                                                    ? { background: "rgba(220,38,38,0.12)",  color: "#dc2626", border: "1px solid rgba(220,38,38,0.30)" }
+                                                    : result.data.invoice.status === "FINANCED"
+                                                    ? { background: "rgba(234,179,8,0.12)",  color: "#ca8a04", border: "1px solid rgba(234,179,8,0.30)" }
+                                                    : { background: "rgba(5,150,105,0.12)",   color: "#059669", border: "1px solid rgba(5,150,105,0.25)" }
+                                            }>
                                             Status: {result.data.invoice.status}
                                         </span>
                                     </div>

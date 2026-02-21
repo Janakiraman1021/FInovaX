@@ -8,6 +8,7 @@ const lenderRoutes = require('./lender.routes');
 const auditRoutes = require('./audit.routes');
 const healthRoutes = require('./health.routes');
 const docsRoutes = require('./docs.routes');
+const trustRoutes = require('./trust.routes');
 
 // Mount V1 routes
 router.use('/auth', authRoutes);
@@ -17,5 +18,6 @@ router.use('/lender', lenderRoutes);
 router.use('/audit', auditRoutes);
 router.use('/health', healthRoutes);
 router.use('/docs', docsRoutes);
+router.use('/', trustRoutes);
 
 module.exports = router;

@@ -31,7 +31,7 @@ export const Navbar = () => {
                 </div>
                 <div className="flex items-center gap-2.5">
                     <span className="text-base font-bold tracking-tight text-mg-silver">
-                        Fino<span className="text-mg-lavender">vaX</span>
+                        One<span className="text-mg-lavender">Flow</span>
                     </span>
                     {cfg && (
                         <span className={cn(

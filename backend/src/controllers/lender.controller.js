@@ -141,6 +141,12 @@ const financeInvoice = async (req, res, next) => {
             status: 'FINANCED'
         });
         if (existingFinanced) {
+            // Penalize for attempting to finance an already financed receivable
+            const { updateTrustScore } = require('../services/trust.service');
+            await updateTrustScore(req.user.id, 'INVOICE_BLOCKED', {
+                action: 'blocked_finance_attempt',
+                fingerprint: invoice.receivableFingerprint
+            });
             return next(new AppError('The business obligation for this invoice has already been financed', 409, 'RECEIVABLE_ALREADY_FINANCED'));
         }
 
@@ -179,6 +185,7 @@ const financeInvoice = async (req, res, next) => {
             invoice.financeTxHash = docBlockchainResult?.txHash || null;
             await invoice.save();
 
+<<<<<<< HEAD
             // Step A: Propagate FINANCED to all uploads of the same file (same ipfsCID)
             if (invoice.ipfsCID) {
                 await Invoice.updateMany(
@@ -199,6 +206,13 @@ const financeInvoice = async (req, res, next) => {
 
             // Step B: Block all other invoices sharing the same business obligation (receivableFingerprint)
             //         that are NOT already FINANCED (covers different-file but same-obligation fraud attempts)
+=======
+            // 1. Update Trust Score
+            const { updateTrustScore } = require('../services/trust.service');
+            await updateTrustScore(invoice.uploadedBy, 'FINANCE_SUCCESS', { invoiceId: invoice.invoiceId });
+
+            // Mark ALL OTHER invoices with same receivableFingerprint as BLOCKED
+>>>>>>> 04099a4829086fa97dd693d813c7268012847278
             await Invoice.updateMany(
                 {
                     receivableFingerprint: invoice.receivableFingerprint,

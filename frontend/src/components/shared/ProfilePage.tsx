@@ -205,7 +205,7 @@ export default function ProfilePage() {
                 <div>
                     <label className="mg-label block mb-1.5">Full Name</label>
                     <div className="relative flex items-center">
-                        <User className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
+                        {/* <User className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" /> */}
                         <input value={name} onChange={e => { setName(e.target.value); setSaveError(""); }}
                             placeholder="Your full name" className="mg-input pl-9" />
                     </div>
@@ -214,7 +214,7 @@ export default function ProfilePage() {
                 <div>
                     <label className="mg-label block mb-1.5">Email Address</label>
                     <div className="relative flex items-center">
-                        <Mail className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
+                        {/* <Mail className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" /> */}
                         <input value={user.email} readOnly
                             className="mg-input pl-9 opacity-60 cursor-not-allowed select-none" />
                     </div>
@@ -224,7 +224,7 @@ export default function ProfilePage() {
                 <div>
                     <label className="mg-label block mb-1.5">Organisation</label>
                     <div className="relative flex items-center">
-                        <Briefcase className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" />
+                        {/* <Briefcase className="absolute left-3 w-4 h-4 text-mg-dim pointer-events-none" /> */}
                         <input value={org} onChange={e => setOrg(e.target.value)}
                             placeholder="Your organisation" className="mg-input pl-9" />
                     </div>
@@ -232,7 +232,7 @@ export default function ProfilePage() {
 
                 <div className="flex items-center justify-between py-2 border-t border-mg-lavender/08 pt-4">
                     <div className="flex items-center gap-3">
-                        <Bell className="w-4 h-4 text-mg-dim" />
+                        {/* <Bell className="w-4 h-4 text-mg-dim" /> */}
                         <div>
                             <p className="text-sm font-medium text-mg-silver">Email Notifications</p>
                             <p className="text-xs text-mg-muted">Receive alerts for invoice status changes</p>

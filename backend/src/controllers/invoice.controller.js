@@ -74,7 +74,24 @@ const createInvoice = async (req, res, next) => {
             invoiceDate: parsedInvoiceDate
         });
 
+<<<<<<< HEAD
         // 4. Upload to IPFS
+=======
+        // 4. Check if this specific receivable obligation is already financed
+        const financedReceivable = await Invoice.findOne({
+            receivableFingerprint,
+            status: 'FINANCED'
+        });
+        if (financedReceivable) {
+            // Penalize for attempting to upload already financed receivable
+            const { updateTrustScore } = require('../services/trust.service');
+            await updateTrustScore(req.user.id, 'DUPLICATE_ATTEMPT', { fingerprint: receivableFingerprint });
+
+            return next(new AppError('This business obligation has already been financed', 409, 'RECEIVABLE_ALREADY_FINANCED'));
+        }
+
+        // 5. Upload to IPFS
+>>>>>>> 04099a4829086fa97dd693d813c7268012847278
         const ipfsResult = await uploadToIPFS(fileBuffer, req.file.originalname);
 
         // 5. Anchor to Blockchain (Informational Registration)
