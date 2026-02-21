@@ -28,6 +28,7 @@ const menuItems: Record<string, NavSection[]> = {
             items: [
                 { label: "Dashboard",       icon: LayoutDashboard, href: "/msme/dashboard"    },
                 { label: "Profile",         icon: User,            href: "/msme/profile"       },
+                { label: "Lenders",         icon: CreditCard,      href: "/msme/lenders"       },
             ],
         },
         {
@@ -68,7 +69,7 @@ const menuItems: Record<string, NavSection[]> = {
             section: "Loans",
             items: [
                 { label: "Active Loans",    icon: Layers,          href: "/lender/active-loans"},
-                { label: "All Loans",       icon: CreditCard,      href: "/lender/loans"       },
+                { label: "All Loans",       icon: BarChart3,       href: "/lender/loans"       },
                 { label: "History",         icon: History,         href: "/lender/history"     },
             ],
         },

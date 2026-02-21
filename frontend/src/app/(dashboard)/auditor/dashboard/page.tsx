@@ -1,25 +1,48 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { mockStats, mockAuditTimeline, AuditEvent } from "@/lib/mock/mockStats";
+import { useEffect, useState, useCallback } from "react";
+import { auditorAPI, AuditLog, LenderInvoice } from "@/lib/api";
+import { mockStats } from "@/lib/mock/mockStats";
 import { motion } from "framer-motion";
 import { ShieldCheck, AlertTriangle, Users, FileCheck, Activity,
          History, TrendingUp, Radio, CheckCircle, XCircle, Info } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function AuditorDashboard() {
-    const [stats,    setStats]    = useState(mockStats);
-    const [timeline, setTimeline] = useState<AuditEvent[]>([]);
+    const [auditLogs, setAuditLogs]   = useState<AuditLog[]>([]);
+    const [invoices, setInvoices]     = useState<LenderInvoice[]>([]);
+    const [loading, setLoading]       = useState(true);
 
-    useEffect(() => {
-        const fetch = async () => {
-            const [s, t] = await Promise.all([api.audit.getStats(), api.audit.getTimeline()]);
-            setStats(s);
-            setTimeline(t);
-        };
-        fetch();
+    const fetchData = useCallback(async () => {
+        try {
+            const token = localStorage.getItem("finovax-token") ?? "";
+            if (!token || token.startsWith("mock.")) { setLoading(false); return; }
+            const [logsRes, invRes] = await Promise.all([
+                auditorAPI.getAuditLogs(token, { limit: 20 }),
+                auditorAPI.getAllInvoices(token, { limit: 200 }),
+            ]);
+            setAuditLogs(logsRes.data.logs);
+            setInvoices(invRes.data.invoices);
+        } catch {
+            // silently ignore
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => { fetchData(); }, [fetchData]);
+
+    // Derive stats from real data
+    const financed      = invoices.filter(i => i.status === "FINANCED");
+    const blocked       = invoices.filter(i => i.status === "BLOCKED");
+    const uniqueMSMEs   = new Set(invoices.map(i => i.uploadedBy?._id)).size;
+
+    const stats = {
+        totalVolume:          financed.reduce((s, i) => s + i.amount, 0) || mockStats.totalVolume,
+        fraudAttemptsBlocked: blocked.length || mockStats.fraudAttemptsBlocked,
+        activeMSMEs:          uniqueMSMEs || mockStats.activeMSMEs,
+        totalInvoices:        invoices.length || mockStats.totalInvoices,
+    };
 
     const statCards = [
         { label: "Total Financing Volume", value: formatCurrency(stats.totalVolume),  icon: TrendingUp,   from: "#4a4e8f", to: "#6b5ea0" },
@@ -79,7 +102,7 @@ export default function AuditorDashboard() {
                             </div>
                             <div>
                                 <p className="font-semibold text-mg-silver text-sm">Live Audit Trail</p>
-                                <p className="text-[10px] text-mg-dim font-mono">{timeline.length} blockchain events</p>
+                                <p className="text-[10px] text-mg-dim font-mono">{auditLogs.length} blockchain events</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -88,17 +111,24 @@ export default function AuditorDashboard() {
                         </div>
                     </div>
                     <div className="p-5 space-y-3 max-h-[380px] overflow-y-auto">
-                        {timeline.length === 0 ? (
+                        {loading ? (
                             <div className="py-12 text-center text-mg-dim text-sm italic">Loading events…</div>
-                        ) : timeline.map((ev: AuditEvent, i: number) => {
-                            const s = eventStyle[ev.status] ?? eventStyle.info;
-                            const IconComp = s.icon;
+                        ) : auditLogs.length === 0 ? (
+                            <div className="py-12 text-center text-mg-dim text-sm italic">No audit events recorded yet</div>
+                        ) : auditLogs.map((log: AuditLog, i: number) => {
+                            const isError   = log.eventType?.toLowerCase().includes("fail") || log.eventType?.toLowerCase().includes("block");
+                            const isSuccess = log.eventType?.toLowerCase().includes("register") || log.eventType?.toLowerCase().includes("finance") || log.eventType?.toLowerCase().includes("login");
+                            const kind      = isError ? "warning" : isSuccess ? "success" : "info";
+                            const s         = eventStyle[kind] ?? eventStyle.info;
+                            const IconComp  = s.icon;
+                            const label     = log.eventType?.replace(/_/g, " ") ?? "Event";
+                            const timeStr   = new Date(log.createdAt).toLocaleTimeString();
                             return (
-                                <motion.div key={ev.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.07 }}
+                                <motion.div key={log._id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.07 }}
                                     className={`flex items-start gap-3 p-4 rounded-xl border ${s.border} ${s.bg}`}>
                                     <IconComp className={`w-4 h-4 shrink-0 mt-0.5 ${s.iconClass}`} />
-                                    <p className="text-sm font-semibold text-mg-silver flex-1">{ev.event}</p>
-                                    <span className="shrink-0 text-[10px] text-mg-dim font-mono">{ev.time}</span>
+                                    <p className="text-sm font-semibold text-mg-silver flex-1 capitalize">{label}</p>
+                                    <span className="shrink-0 text-[10px] text-mg-dim font-mono">{timeStr}</span>
                                 </motion.div>
                             );
                         })}

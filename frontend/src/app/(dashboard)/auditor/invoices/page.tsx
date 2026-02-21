@@ -145,16 +145,20 @@ export default function AuditorInvoices() {
                                         </td>
                                         <td className="text-mg-muted text-sm whitespace-nowrap">{formatDate(inv.createdAt)}</td>
                                         <td>
-                                            <button onClick={() => copyHash(inv.invoiceHash, inv._id)}
-                                                title={inv.invoiceHash}
-                                                className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-mg-elevated transition-colors group">
-                                                <span className="font-mono text-[10px] text-mg-dim group-hover:text-mg-muted">
-                                                    {inv.invoiceHash.slice(0, 8)}…{inv.invoiceHash.slice(-4)}
-                                                </span>
-                                                {copiedId === inv._id
-                                                    ? <Check className="w-3 h-3 text-status-success shrink-0" />
-                                                    : <Copy className="w-3 h-3 text-mg-dim group-hover:text-mg-lavender shrink-0" />}
-                                            </button>
+                                            {inv.invoiceHash ? (
+                                                <button onClick={() => copyHash(inv.invoiceHash, inv._id)}
+                                                    title={inv.invoiceHash}
+                                                    className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-mg-elevated transition-colors group">
+                                                    <span className="font-mono text-[10px] text-mg-dim group-hover:text-mg-muted">
+                                                        {inv.invoiceHash.slice(0, 8)}…{inv.invoiceHash.slice(-4)}
+                                                    </span>
+                                                    {copiedId === inv._id
+                                                        ? <Check className="w-3 h-3 text-status-success shrink-0" />
+                                                        : <Copy className="w-3 h-3 text-mg-dim group-hover:text-mg-lavender shrink-0" />}
+                                                </button>
+                                            ) : (
+                                                <span className="text-[10px] text-mg-dim italic">N/A</span>
+                                            )}
                                         </td>
                                         <td><StatusBadge status={inv.status} /></td>
                                         <td>

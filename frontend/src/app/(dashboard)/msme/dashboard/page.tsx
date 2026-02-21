@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { InvoiceUploader } from "@/components/finovax/InvoiceUploader";
-import { api } from "@/lib/api";
-import { Invoice } from "@/lib/mock/mockInvoices";
+import { invoiceAPI, UploadedInvoice } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -11,21 +10,34 @@ import { ExternalLink, Database, TrendingUp, FileCheck, Clock, Wallet } from "lu
 import Link from "next/link";
 
 export default function MSMEDashboardPage() {
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [invoices, setInvoices] = useState<UploadedInvoice[]>([]);
     const [loading, setLoading]   = useState(true);
 
-    useEffect(() => {
-        const fetch = async () => { setInvoices(await api.invoices.getAll()); setLoading(false); };
-        fetch();
-        const t = setInterval(fetch, 6000);
-        return () => clearInterval(t);
+    const fetchInvoices = useCallback(async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem("finovax-token") ?? "";
+            if (!token || token.startsWith("mock.")) { setLoading(false); return; }
+            const res = await invoiceAPI.getMyInvoices(token, { limit: 20 });
+            setInvoices(res.data.invoices);
+        } catch {
+            // silently ignore — table will stay empty
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchInvoices();
+        const t = setInterval(fetchInvoices, 30_000);
+        return () => clearInterval(t);
+    }, [fetchInvoices]);
 
     const stats = [
         { label: "Portfolio Value", value: formatCurrency(invoices.reduce((s, i) => s + i.amount, 0)), icon: Wallet,     from: "#4a4e8f", to: "#6b5ea0" },
         { label: "Financed",        value: invoices.filter(i => i.status === "FINANCED").length,        icon: TrendingUp, from: "#059669", to: "#10b981" },
-        { label: "Verified",        value: invoices.filter(i => i.status === "VERIFIED").length,         icon: FileCheck,  from: "#4a4e8f", to: "#4f46e5" },
-        { label: "Pending",         value: invoices.filter(i => i.status === "PENDING").length,          icon: Clock,      from: "#6d28d9", to: "#6b5ea0" },
+        { label: "Uploaded",        value: invoices.filter(i => i.status === "UPLOADED").length,        icon: FileCheck,  from: "#4a4e8f", to: "#4f46e5" },
+        { label: "Blocked",         value: invoices.filter(i => i.status === "BLOCKED").length,         icon: Clock,      from: "#6d28d9", to: "#6b5ea0" },
     ];
 
     return (
@@ -96,17 +108,17 @@ export default function MSMEDashboardPage() {
                                         </div>
                                     </td></tr>
                                 ) : invoices.slice(0, 5).map((inv, i) => (
-                                    <motion.tr key={inv.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}>
+                                    <motion.tr key={inv.invoiceId} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}>
                                         <td>
-                                            <p className="font-medium text-mg-silver text-sm">{inv.id}</p>
+                                            <p className="font-medium text-mg-silver text-sm">{inv.invoiceId}</p>
                                             <p className="font-mono text-[10px] text-mg-dim mt-0.5 truncate max-w-[140px]">{inv.invoiceHash?.slice(0, 14)}…</p>
                                         </td>
                                         <td className="font-semibold text-mg-silver">{formatCurrency(inv.amount)}</td>
-                                        <td className="text-mg-muted text-sm">{formatDate(inv.timestamp)}</td>
+                                        <td className="text-mg-muted text-sm">{formatDate(inv.createdAt)}</td>
                                         <td><StatusBadge status={inv.status} /></td>
                                         <td>
-                                            {inv.ledgerTx && (
-                                                <a href={`https://cardona-zkevm.polygonscan.com/tx/${inv.ledgerTx}`} target="_blank" rel="noopener noreferrer"
+                                            {inv.ipfsCID && (
+                                                <a href={`https://gateway.pinata.cloud/ipfs/${inv.ipfsCID}`} target="_blank" rel="noopener noreferrer"
                                                     className="p-1.5 rounded-md hover:bg-mg-elevated text-mg-dim hover:text-mg-lavender transition-colors inline-flex">
                                                     <ExternalLink className="w-3.5 h-3.5" />
                                                 </a>

@@ -1,47 +1,61 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { HashVerifier } from "@/components/finovax/HashVerifier";
-import { api } from "@/lib/api";
-import { Invoice } from "@/lib/mock/mockInvoices";
+import { lenderAPI, LenderInvoice } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { formatCurrency, formatDate, generateTxHash, cn } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Coins, Zap, Ban, AlertTriangle, TrendingUp, ShieldOff, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 import BlockchainVisualizer from "@/components/finovax/BlockchainVisualizer";
 
 export default function LenderDashboard() {
-    const [invoices, setInvoices]     = useState<Invoice[]>([]);
+    const [invoices, setInvoices]     = useState<LenderInvoice[]>([]);
     const [processing, setProcessing] = useState<string | null>(null);
 
-    useEffect(() => {
-        api.invoices.getAll().then((data: Invoice[]) =>
-            setInvoices(data.filter(i => ["VERIFIED", "FINANCED", "FRAUD_ALERT"].includes(i.status)))
-        );
+    const fetchInvoices = useCallback(async () => {
+        try {
+            const token = localStorage.getItem("finovax-token") ?? "";
+            if (!token || token.startsWith("mock.")) return;
+            const res = await lenderAPI.getAllInvoices(token, { limit: 50 });
+            setInvoices(res.data.invoices);
+        } catch {
+            // silently ignore on dashboard
+        }
     }, []);
 
-    const handleDisburse = async (inv: Invoice) => {
-        setProcessing(inv.id);
-        const txHash = generateTxHash();
+    useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
+
+    const handleDisburse = async (inv: LenderInvoice) => {
+        setProcessing(inv.invoiceId);
         try {
-            await api.invoices.disburse(inv.id, "Sarah Smith (Lender)", txHash);
-            toast.success("Settlement confirmed", { description: `Ref: ${txHash.slice(0, 18)}…` });
+            const token = localStorage.getItem("finovax-token") ?? "";
+            const res = await lenderAPI.financeInvoice(token, inv.invoiceId);
+            toast.success("Settlement confirmed", {
+                description: `Ref: ${res.data.invoice.financeTxHash?.slice(0, 18) ?? inv.invoiceId}…`,
+            });
             setInvoices(prev => prev.map(i =>
-                i.id === inv.id ? { ...i, status: "FINANCED" as any, lender: "Sarah Smith", ledgerTx: txHash } : i
+                i.invoiceId === inv.invoiceId ? { ...i, status: "FINANCED" } : i
             ));
-        } finally { setProcessing(null); }
+        } catch (err: unknown) {
+            toast.error("Finance failed", {
+                description: err instanceof Error ? err.message : "Unknown error",
+            });
+        } finally {
+            setProcessing(null);
+        }
     };
 
-    const eligible    = invoices.filter(i => i.status === "VERIFIED");
+    const eligible    = invoices.filter(i => i.status === "UPLOADED");
     const financed    = invoices.filter(i => i.status === "FINANCED");
-    const fraudAlerts = invoices.filter(i => i.status === "FRAUD_ALERT");
+    const blocked     = invoices.filter(i => i.status === "BLOCKED");
 
     const statCards = [
-        { label: "Active Loans",       value: eligible.length,     icon: ClipboardCheck, from: "#4a4e8f", to: "#6b5ea0" },
-        { label: "Volume Disbursed",   value: formatCurrency(financed.reduce((s,i) => s + i.amount, 0)), icon: TrendingUp, from: "#059669", to: "#10b981" },
-        { label: "Fraud Blocked",      value: fraudAlerts.length,  icon: ShieldOff,      from: "#dc2626", to: "#ef4444" },
-        { label: "Pending Review",     value: eligible.length,     icon: Coins,          from: "#6d28d9", to: "#4f46e5" },
+        { label: "Pending Review",     value: eligible.length,    icon: ClipboardCheck, from: "#4a4e8f", to: "#6b5ea0" },
+        { label: "Volume Disbursed",   value: formatCurrency(financed.reduce((s, i) => s + i.amount, 0)), icon: TrendingUp, from: "#059669", to: "#10b981" },
+        { label: "Blocked",            value: blocked.length,     icon: ShieldOff,      from: "#dc2626", to: "#ef4444" },
+        { label: "Total Financed",     value: financed.length,    icon: Coins,          from: "#6d28d9", to: "#4f46e5" },
     ];
 
     return (
@@ -94,21 +108,20 @@ export default function LenderDashboard() {
                                 <Coins className="w-8 h-8 text-mg-dim mx-auto mb-3" />
                                 <p className="text-sm text-mg-dim italic">No verified invoices pending disbursement</p>
                             </div>
-                        ) : eligible.map((inv: Invoice) => (
-                            <motion.div layout key={inv.id} className="p-4 rounded-xl bg-mg-elevated border border-mg-lavender/10 hover:border-status-success/25 transition-all flex items-center justify-between gap-4">
+                        ) : eligible.map((inv: LenderInvoice) => (
+                            <motion.div layout key={inv.invoiceId} className="p-4 rounded-xl bg-mg-elevated border border-mg-lavender/10 hover:border-status-success/25 transition-all flex items-center justify-between gap-4">
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-semibold text-mg-silver text-sm">{inv.id}</span>
+                                        <span className="font-semibold text-mg-silver text-sm">{inv.invoiceId}</span>
                                         <StatusBadge status={inv.status} />
                                     </div>
                                     <p className="text-lg font-bold text-status-success">{formatCurrency(inv.amount)}</p>
                                     <p className="font-mono text-[10px] text-mg-dim mt-0.5 truncate">{inv.invoiceHash?.slice(0, 20)}…</p>
                                 </div>
-                                <button onClick={() => handleDisburse(inv)} disabled={processing === inv.id}
-                                    className={cn("shrink-0 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wide transition-all",
-                                        processing === inv.id ? "bg-mg-card text-mg-dim cursor-not-allowed" : "text-white hover:-translate-y-0.5")}
-                                    style={processing !== inv.id ? { background: "linear-gradient(135deg, #059669, #10b981)", boxShadow: "0 4px 14px rgba(5,150,105,0.20)" } : undefined}>
-                                    {processing === inv.id ? <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full border border-mg-dim border-t-mg-lavender animate-spin" />Settling…</span> : "Disburse"}
+                                <button onClick={() => handleDisburse(inv)} disabled={processing === inv.invoiceId}
+                                    className={`shrink-0 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wide transition-all ${processing === inv.invoiceId ? "bg-mg-card text-mg-dim cursor-not-allowed" : "text-white hover:-translate-y-0.5"}`}
+                                    style={processing !== inv.invoiceId ? { background: "linear-gradient(135deg, #059669, #10b981)", boxShadow: "0 4px 14px rgba(5,150,105,0.20)" } : undefined}>
+                                    {processing === inv.invoiceId ? <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full border border-mg-dim border-t-mg-lavender animate-spin" />Settling…</span> : "Finance"}
                                 </button>
                             </motion.div>
                         ))}
@@ -125,19 +138,19 @@ export default function LenderDashboard() {
                             <AlertTriangle className="w-4 h-4 text-status-danger" />
                         </div>
                         <div>
-                            <p className="font-semibold text-mg-silver text-sm">Fraud Alerts</p>
-                            <p className="text-[10px] text-mg-dim">{fraudAlerts.length} flagged transaction{fraudAlerts.length !== 1 ? "s" : ""}</p>
+                            <p className="font-semibold text-mg-silver text-sm">Blocked Invoices</p>
+                            <p className="text-[10px] text-mg-dim">{blocked.length} flagged transaction{blocked.length !== 1 ? "s" : ""}</p>
                         </div>
                     </div>
                     <div className="p-4 space-y-3">
-                        {fraudAlerts.length === 0 ? (
-                            <div className="py-10 text-center"><Ban className="w-8 h-8 text-mg-dim mx-auto mb-3" /><p className="text-sm text-mg-dim italic">No fraud alerts</p></div>
-                        ) : fraudAlerts.map((inv: Invoice) => (
-                            <div key={inv.id} className="p-4 rounded-xl border border-status-danger/20 bg-status-danger/5 flex items-center justify-between">
+                        {blocked.length === 0 ? (
+                            <div className="py-10 text-center"><Ban className="w-8 h-8 text-mg-dim mx-auto mb-3" /><p className="text-sm text-mg-dim italic">No blocked invoices</p></div>
+                        ) : blocked.map((inv: LenderInvoice) => (
+                            <div key={inv.invoiceId} className="p-4 rounded-xl border border-status-danger/20 bg-status-danger/5 flex items-center justify-between">
                                 <div>
-                                    <p className="font-semibold text-mg-silver text-sm">{inv.id}</p>
+                                    <p className="font-semibold text-mg-silver text-sm">{inv.invoiceId}</p>
                                     <p className="text-status-danger text-sm font-medium">{formatCurrency(inv.amount)}</p>
-                                    <p className="text-[10px] text-mg-dim mt-0.5">{formatDate(inv.timestamp)}</p>
+                                    <p className="text-[10px] text-mg-dim mt-0.5">{formatDate(inv.createdAt)}</p>
                                 </div>
                                 <StatusBadge status={inv.status} />
                             </div>

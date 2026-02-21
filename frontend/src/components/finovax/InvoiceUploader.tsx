@@ -1,9 +1,9 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { invoiceAPI, UploadedInvoice } from "@/lib/api";
+import { invoiceAPI, authAPI, UploadedInvoice, LenderListItem } from "@/lib/api";
 import { toast } from "sonner";
 
 const CURRENCIES = ["INR", "USD", "EUR", "GBP", "AED"] as const;
@@ -25,11 +25,22 @@ export const InvoiceUploader = () => {
         date.setDate(date.getDate() + 30);
         return date.toISOString().split('T')[0];
     });
+    const [submittedTo, setSubmittedTo] = useState("");
+    const [lenders, setLenders]         = useState<LenderListItem[]>([]);
     const [stage, setStage]         = useState<Stage>("idle");
     const [progress, setProgress]   = useState(0);
     const [result, setResult]       = useState<UploadedInvoice | null>(null);
     const [errMsg, setErrMsg]       = useState("");
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+    // Fetch lenders on mount
+    useEffect(() => {
+        const token = localStorage.getItem("finovax-token");
+        if (!token || token.startsWith("mock.")) return;
+        authAPI.getLenders(token)
+            .then(res => setLenders(res.data))
+            .catch(() => { /* lender list is optional */ });
+    }, []);
 
     const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
@@ -52,7 +63,7 @@ export const InvoiceUploader = () => {
 
     const resetForm = () => {
         setFile(null); setAmount(""); setDesc(""); setCurrency("INR");
-        setSellerGSTIN(""); setBuyerGSTIN(""); setPoReference("");
+        setSellerGSTIN(""); setBuyerGSTIN(""); setPoReference(""); setSubmittedTo("");
         setInvoiceDate(new Date().toISOString().split('T')[0]);
         const dueDateDefault = new Date();
         dueDateDefault.setDate(dueDateDefault.getDate() + 30);
@@ -101,6 +112,7 @@ export const InvoiceUploader = () => {
             if (poReference.trim()) formData.append("poReference", poReference.trim().toUpperCase());
             formData.append("invoiceDate", invoiceDate);
             formData.append("dueDate", dueDate);
+            if (submittedTo) formData.append("submittedTo", submittedTo);
 
             setStage("uploading");
             setProgress(60);
@@ -308,6 +320,31 @@ export const InvoiceUploader = () => {
                             onChange={e => setPoReference(e.target.value.toUpperCase())}
                             placeholder="PO-2026-Q1-1234"
                             className="w-full px-3 py-2 rounded-lg bg-mg-elevated border border-mg-lavender/10 text-mg-silver text-sm font-mono uppercase placeholder:text-mg-dim/50 focus:outline-none focus:border-mg-cosmic transition-colors" />
+                    </div>
+
+                    {/* Submit to Lender */}
+                    <div>
+                        <label className="block text-xs font-semibold text-mg-silver mb-2">
+                            Submit to Lender{" "}
+                            <span className="text-mg-dim font-normal">(Optional)</span>
+                        </label>
+                        <select
+                            value={submittedTo}
+                            onChange={e => setSubmittedTo(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg bg-mg-elevated border border-mg-lavender/10 text-mg-silver text-sm focus:outline-none focus:border-mg-cosmic transition-colors appearance-none cursor-pointer"
+                        >
+                            <option value="">— Select a lender —</option>
+                            {lenders.map(l => (
+                                <option key={l._id} value={l._id}>
+                                    {l.name}{l.organization ? ` — ${l.organization}` : ""}
+                                </option>
+                            ))}
+                        </select>
+                        {lenders.length === 0 && (
+                            <p className="text-[10px] text-mg-dim mt-1">
+                                No lenders available. The invoice will still be uploaded.
+                            </p>
+                        )}
                     </div>
                 </div>
 

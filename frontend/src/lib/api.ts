@@ -35,26 +35,38 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
     return data as T;
 }
 
+export interface LenderListItem {
+    _id: string;
+    name: string;
+    email: string;
+    organization: string;
+}
+
 export const authAPI = {
     login: (email: string, password: string) =>
         apiRequest<{ success: boolean; data: { user: AuthUser; token: string } }>(
-            "/auth/login",
+            "/api/v1/auth/login",
             { method: "POST", body: JSON.stringify({ email, password }) }
         ),
     register: (payload: RegisterPayload) =>
         apiRequest<{ success: boolean; data: { user: AuthUser; token: string } }>(
-            "/auth/register",
+            "/api/v1/auth/register",
             { method: "POST", body: JSON.stringify(payload) }
         ),
     getMe: (token: string) =>
-        apiRequest<{ success: boolean; data: AuthUser }>("/auth/me", {
+        apiRequest<{ success: boolean; data: AuthUser }>("/api/v1/auth/me", {
             headers: { Authorization: `Bearer ${token}` },
         }),
     updateProfile: (token: string, updates: { name?: string; organization?: string }) =>
-        apiRequest<{ success: boolean; data: AuthUser }>("/auth/me", {
+        apiRequest<{ success: boolean; data: AuthUser }>("/api/v1/auth/me", {
             method: "PATCH",
             headers: { Authorization: `Bearer ${token}` },
             body: JSON.stringify(updates),
+        }),
+    /** GET /api/v1/auth/lenders — MSME only: discover available lenders */
+    getLenders: (token: string) =>
+        apiRequest<{ success: boolean; data: LenderListItem[] }>("/api/v1/auth/lenders", {
+            headers: { Authorization: `Bearer ${token}` },
         }),
 };
 
@@ -86,7 +98,7 @@ async function apiUpload<T>(path: string, token: string, formData: FormData): Pr
 export const invoiceAPI = {
     upload: (token: string, formData: FormData) =>
         apiUpload<{ success: boolean; message: string; data: { invoice: UploadedInvoice } }>(
-            "/invoices/upload",
+            "/api/v1/invoices/upload",
             token,
             formData
         ),
@@ -96,7 +108,7 @@ export const invoiceAPI = {
         if (params?.limit)  qs.set("limit",  String(params.limit));
         if (params?.status) qs.set("status", params.status);
         return apiRequest<{ success: boolean; data: { invoices: UploadedInvoice[]; pagination: { total: number; page: number; totalPages: number } } }>(
-            `/invoices/my${qs.toString() ? "?" + qs.toString() : ""}`,
+            `/api/v1/invoices/my${qs.toString() ? "?" + qs.toString() : ""}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
     },
@@ -164,7 +176,7 @@ export const msmeProfileAPI = {
         ),
 
     /** PATCH /api/msme-profile/field — update single field */
-    updateField: (token: string, field: string, value: any) =>
+    updateField: (token: string, field: string, value: unknown) =>
         apiRequest<{ success: boolean; message: string; data: MSMEProfile }>(
             "/api/msme-profile/field",
             {
@@ -224,29 +236,29 @@ export interface LenderVerifyResult {
 }
 
 export const lenderAPI = {
-    /** GET /lender/invoices — list all invoices (lender view) */
+    /** GET /api/v1/lender/invoices — list all invoices (lender view) */
     getAllInvoices: (token: string, params?: { page?: number; limit?: number; status?: string }) => {
         const qs = new URLSearchParams();
         if (params?.page)   qs.set("page",   String(params.page));
         if (params?.limit)  qs.set("limit",  String(params.limit));
         if (params?.status) qs.set("status", params.status);
         return apiRequest<{ success: boolean; data: { invoices: LenderInvoice[]; pagination: { total: number; page: number; totalPages: number } } }>(
-            `/lender/invoices${qs.toString() ? "?" + qs.toString() : ""}`,
+            `/api/v1/lender/invoices${qs.toString() ? "?" + qs.toString() : ""}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
     },
 
-    /** GET /lender/verify/:invoiceId — accepts invoiceId or invoiceHash */
+    /** GET /api/v1/lender/verify/:invoiceId — accepts invoiceId or invoiceHash */
     verifyInvoice: (token: string, invoiceIdOrHash: string) =>
         apiRequest<{ success: boolean; data: LenderVerifyResult }>(
-            `/lender/verify/${encodeURIComponent(invoiceIdOrHash)}`,
+            `/api/v1/lender/verify/${encodeURIComponent(invoiceIdOrHash)}`,
             { headers: { Authorization: `Bearer ${token}` } }
         ),
 
-    /** POST /lender/finance/:invoiceId */
+    /** POST /api/v1/lender/finance/:invoiceId */
     financeInvoice: (token: string, invoiceId: string) =>
         apiRequest<{ success: boolean; message: string; data: { invoice: { invoiceId: string; status: string; financeTxHash: string | null } } }>(
-            `/lender/finance/${encodeURIComponent(invoiceId)}`,
+            `/api/v1/lender/finance/${encodeURIComponent(invoiceId)}`,
             { method: "POST", headers: { Authorization: `Bearer ${token}` } }
         ),
 };
@@ -264,19 +276,19 @@ export interface AuditLog {
 }
 
 export const auditorAPI = {
-    /** GET /audit/invoices — read-only list of all invoices */
+    /** GET /api/v1/audit/invoices — read-only list of all invoices */
     getAllInvoices: (token: string, params?: { page?: number; limit?: number; status?: string }) => {
         const qs = new URLSearchParams();
         if (params?.page)   qs.set("page",   String(params.page));
         if (params?.limit)  qs.set("limit",  String(params.limit));
         if (params?.status) qs.set("status", params.status);
         return apiRequest<{ success: boolean; data: { invoices: LenderInvoice[]; pagination: { total: number; page: number; totalPages: number } } }>(
-            `/audit/invoices${qs.toString() ? "?" + qs.toString() : ""}`,
+            `/api/v1/audit/invoices${qs.toString() ? "?" + qs.toString() : ""}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
     },
 
-    /** GET /audit/system — paginated audit logs */
+    /** GET /api/v1/audit/system — paginated audit logs */
     getAuditLogs: (token: string, params?: { page?: number; limit?: number; eventType?: string; userId?: string }) => {
         const qs = new URLSearchParams();
         if (params?.page)      qs.set("page",      String(params.page));
@@ -284,15 +296,22 @@ export const auditorAPI = {
         if (params?.eventType) qs.set("eventType",  params.eventType);
         if (params?.userId)    qs.set("userId",     params.userId);
         return apiRequest<{ success: boolean; data: { logs: AuditLog[]; pagination: { total: number; page: number; totalPages: number } } }>(
-            `/audit/system${qs.toString() ? "?" + qs.toString() : ""}`,
+            `/api/v1/audit/system${qs.toString() ? "?" + qs.toString() : ""}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
     },
 
-    /** GET /audit/invoice/:invoiceId — logs for a specific invoice */
+    /** GET /api/v1/audit/invoice/:invoiceId — logs for a specific invoice */
     getInvoiceLogs: (token: string, invoiceId: string) =>
         apiRequest<{ success: boolean; data: { logs: AuditLog[] } }>(
-            `/audit/invoice/${encodeURIComponent(invoiceId)}`,
+            `/api/v1/audit/invoice/${encodeURIComponent(invoiceId)}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        ),
+
+    /** GET /api/v1/audit/receivable/:fingerprint — obligation-level timeline */
+    getReceivableLogs: (token: string, fingerprint: string) =>
+        apiRequest<{ success: boolean; data: { logs: AuditLog[] } }>(
+            `/api/v1/audit/receivable/${encodeURIComponent(fingerprint)}`,
             { headers: { Authorization: `Bearer ${token}` } }
         ),
 };
