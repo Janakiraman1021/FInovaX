@@ -141,6 +141,12 @@ const financeInvoice = async (req, res, next) => {
             status: 'FINANCED'
         });
         if (existingFinanced) {
+            // Penalize for attempting to finance an already financed receivable
+            const { updateTrustScore } = require('../services/trust.service');
+            await updateTrustScore(req.user.id, 'INVOICE_BLOCKED', {
+                action: 'blocked_finance_attempt',
+                fingerprint: invoice.receivableFingerprint
+            });
             return next(new AppError('The business obligation for this invoice has already been financed', 409, 'RECEIVABLE_ALREADY_FINANCED'));
         }
 
@@ -177,6 +183,10 @@ const financeInvoice = async (req, res, next) => {
             invoice.financedAt = new Date();
             invoice.financeTxHash = docBlockchainResult?.txHash || null;
             await invoice.save();
+
+            // 1. Update Trust Score
+            const { updateTrustScore } = require('../services/trust.service');
+            await updateTrustScore(invoice.uploadedBy, 'FINANCE_SUCCESS', { invoiceId: invoice.invoiceId });
 
             // Mark ALL OTHER invoices with same receivableFingerprint as BLOCKED
             await Invoice.updateMany(

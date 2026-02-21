@@ -83,6 +83,10 @@ const createInvoice = async (req, res, next) => {
             status: 'FINANCED'
         });
         if (financedReceivable) {
+            // Penalize for attempting to upload already financed receivable
+            const { updateTrustScore } = require('../services/trust.service');
+            await updateTrustScore(req.user.id, 'DUPLICATE_ATTEMPT', { fingerprint: receivableFingerprint });
+
             return next(new AppError('This business obligation has already been financed', 409, 'RECEIVABLE_ALREADY_FINANCED'));
         }
 

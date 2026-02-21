@@ -37,6 +37,12 @@ const MSMEProfileSchema = new Schema(
       type: String,
       trim: true,
     },
+    trustScore: {
+      type: Number,
+      default: 100,
+      min: 0,
+      max: 100,
+    },
   },
   {
     timestamps: true,
