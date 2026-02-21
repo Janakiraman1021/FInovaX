@@ -140,8 +140,7 @@ export default function AuditorInvoices() {
                                             <p className="text-[10px] text-mg-dim">{inv.uploadedBy?.name}</p>
                                         </td>
                                         <td className="font-bold text-mg-cosmic whitespace-nowrap">
-                                            {formatCurrency(inv.amount)}&nbsp;
-                                            <span className="text-[10px] font-normal text-mg-dim">{inv.currency}</span>
+                                            {formatCurrency(inv.amount)}
                                         </td>
                                         <td className="text-mg-muted text-sm whitespace-nowrap">{formatDate(inv.createdAt)}</td>
                                         <td>

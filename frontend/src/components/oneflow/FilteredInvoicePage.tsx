@@ -21,7 +21,7 @@ interface FilteredInvoicePageProps {
     uploadLink?: boolean;
 }
 
-export default function FilteredInvoicePage({
+export default function xFilteredInvoicePage({
     title, subtitle, sectionLabel, status, emptyMessage, accentClass = "mg-accent-text", icon, iconBg, uploadLink,
 }: FilteredInvoicePageProps) {
     const [invoices, setInvoices] = useState<Invoice[]>([]);

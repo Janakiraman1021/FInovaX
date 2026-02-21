@@ -187,8 +187,7 @@ export default function LenderLoans() {
                                             <p className="text-[10px] text-mg-dim">{inv.uploadedBy?.name}</p>
                                         </td>
                                         <td className="font-semibold text-mg-silver whitespace-nowrap">
-                                            {formatCurrency(inv.amount)}&nbsp;
-                                            <span className="text-[10px] font-normal text-mg-dim">{inv.currency}</span>
+                                            {formatCurrency(inv.amount)}
                                         </td>
                                         <td className="text-mg-muted text-sm whitespace-nowrap">{formatDate(inv.createdAt)}</td>
                                         <td className="hidden lg:table-cell">
