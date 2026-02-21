@@ -4,14 +4,15 @@ const { register, login, getMe } = require('../controllers/auth.controller');
 const { protect } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { registerValidation, loginValidation } = require('../validators/auth.validator');
+const { authLimiter } = require('../middleware/rateLimiter');
 
-// POST /api/auth/register
+// POST /auth/register
 router.post('/register', registerValidation, validate, register);
 
-// POST /api/auth/login
-router.post('/login', loginValidation, validate, login);
+// POST /auth/login
+router.post('/login', authLimiter, loginValidation, validate, login);
 
-// GET /api/auth/me — protected
+// GET /auth/me — protected
 router.get('/me', protect, getMe);
 
 module.exports = router;

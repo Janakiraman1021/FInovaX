@@ -2,16 +2,17 @@ const mongoose = require('mongoose');
 
 const invoiceSchema = new mongoose.Schema(
     {
-        invoiceNumber: {
+        invoiceId: {
             type: String,
-            required: [true, 'Invoice number is required'],
+            required: [true, 'Invoice ID is required'],
             trim: true,
             index: true,
+            unique: true, // Generate unique invoiceId
         },
-        msmeId: {
+        uploadedBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
-            required: [true, 'MSME reference is required'],
+            required: [true, 'Uploader reference is required'],
             index: true,
         },
         amount: {
@@ -31,13 +32,13 @@ const invoiceSchema = new mongoose.Schema(
             maxlength: [500, 'Description cannot exceed 500 characters'],
         },
         // File & integrity
-        fileHash: {
+        invoiceHash: {
             type: String,
-            required: [true, 'File hash is required'],
+            required: [true, 'Invoice hash is required'],
             unique: true,
             index: true,
         },
-        ipfsCid: {
+        ipfsCID: {
             type: String,
             default: null,
         },
@@ -48,10 +49,10 @@ const invoiceSchema = new mongoose.Schema(
         status: {
             type: String,
             enum: {
-                values: ['uploaded', 'registered', 'financed'],
-                message: 'Status must be one of: uploaded, registered, financed',
+                values: ['UPLOADED', 'FINANCED', 'BLOCKED'],
+                message: 'Status must be UPLOADED, FINANCED, or BLOCKED',
             },
-            default: 'uploaded',
+            default: 'UPLOADED',
             index: true,
         },
         blockchainTxHash: {
@@ -77,7 +78,5 @@ const invoiceSchema = new mongoose.Schema(
     }
 );
 
-// Compound index to prevent same MSME uploading duplicate invoice numbers
-invoiceSchema.index({ invoiceNumber: 1, msmeId: 1 }, { unique: true });
-
+// No need for compound index on invoiceId as it will be unique UUID
 module.exports = mongoose.model('Invoice', invoiceSchema);

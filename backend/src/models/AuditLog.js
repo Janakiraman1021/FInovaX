@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 
 const auditLogSchema = new mongoose.Schema(
     {
-        action: {
+        eventType: {
             type: String,
-            required: [true, 'Action is required'],
+            required: [true, 'Event type is required'],
             enum: [
                 'user_registered',
                 'user_login',
@@ -13,13 +13,22 @@ const auditLogSchema = new mongoose.Schema(
                 'invoice_financed',
                 'invoice_verified',
                 'finance_blocked_duplicate',
+                // On-chain event types:
+                'InvoiceRegistered',
+                'InvoiceFinanced',
+                'DuplicateFinancingAttempt'
             ],
             index: true,
         },
         performedBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
-            required: true,
+            default: null, // Optional because on-chain events don't have a Mongo User ID, just an address
+            index: true,
+        },
+        actorAddress: {
+            type: String, // Stored for on-chain events where we only know the hex address
+            default: null,
             index: true,
         },
         invoiceId: {

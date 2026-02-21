@@ -7,6 +7,7 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 const authRoutes = require('./routes/auth.routes');
 const invoiceRoutes = require('./routes/invoice.routes');
+const blockchainRoutes = require('./routes/blockchain.routes');
 const lenderRoutes = require('./routes/lender.routes');
 const auditRoutes = require('./routes/audit.routes');
 
@@ -40,10 +41,11 @@ app.get('/api/health', (_req, res) => {
 });
 
 // --------------- API Routes ---------------
-app.use('/api/auth', authRoutes);
-app.use('/api/invoices', invoiceRoutes);
-app.use('/api/lender', lenderRoutes);
-app.use('/api/audit', auditRoutes);
+app.use('/auth', authRoutes);
+app.use('/invoices', invoiceRoutes);
+app.use('/blockchain', blockchainRoutes);
+app.use('/lender', lenderRoutes);
+app.use('/audit', auditRoutes);
 
 // --------------- 404 Handler ---------------
 app.use((_req, res) => {

@@ -14,7 +14,7 @@ const AuditLog = require('../models/AuditLog');
 const createAuditLog = async ({ action, performedBy, invoiceId = null, txHash = null, details = {}, ipAddress = null }) => {
     try {
         const log = await AuditLog.create({
-            action,
+            eventType: action,
             performedBy,
             invoiceId,
             txHash,

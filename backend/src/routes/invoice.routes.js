@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { upload, createInvoice, getInvoices, getInvoiceById } = require('../controllers/invoice.controller');
+const { upload, createInvoice, getMyInvoices } = require('../controllers/invoice.controller');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
 const { validate } = require('../middleware/validate');
@@ -9,9 +9,9 @@ const { invoiceUploadValidation } = require('../validators/invoice.validator');
 // All routes are protected
 router.use(protect);
 
-// POST /api/invoices — MSME only
+// POST /api/invoices/upload — MSME only
 router.post(
-    '/',
+    '/upload',
     authorize('msme'),
     upload.single('file'),
     invoiceUploadValidation,
@@ -19,10 +19,7 @@ router.post(
     createInvoice
 );
 
-// GET /api/invoices — all roles
-router.get('/', authorize('msme', 'lender', 'auditor'), getInvoices);
-
-// GET /api/invoices/:id — all roles
-router.get('/:id', authorize('msme', 'lender', 'auditor'), getInvoiceById);
+// GET /api/invoices/my — MSME only
+router.get('/my', authorize('msme'), getMyInvoices);
 
 module.exports = router;

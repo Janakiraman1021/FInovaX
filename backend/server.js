@@ -5,12 +5,14 @@ dotenv.config();
 
 const app = require('./src/app');
 const connectDB = require('./src/config/db');
+const { initEventListeners } = require('./src/services/eventListener.service');
 
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   try {
     await connectDB();
+    initEventListeners();
 
     app.listen(PORT, () => {
       console.log(

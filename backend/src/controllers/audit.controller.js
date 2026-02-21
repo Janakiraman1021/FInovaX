@@ -7,17 +7,17 @@ const AppError = require('../utils/AppError');
  */
 const getAuditLogs = async (req, res, next) => {
     try {
-        const { page = 1, limit = 50, action, userId } = req.query;
+        const { page = 1, limit = 50, eventType, userId } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const filter = {};
-        if (action) filter.action = action;
+        if (eventType) filter.eventType = eventType;
         if (userId) filter.performedBy = userId;
 
         const [logs, total] = await Promise.all([
             AuditLog.find(filter)
                 .populate('performedBy', 'name email role')
-                .populate('invoiceId', 'invoiceNumber amount status')
+                .populate('invoiceId', 'invoiceId amount status')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(parseInt(limit)),
@@ -47,7 +47,19 @@ const getAuditLogs = async (req, res, next) => {
  */
 const getInvoiceAuditLogs = async (req, res, next) => {
     try {
-        const logs = await AuditLog.find({ invoiceId: req.params.invoiceId })
+        const invoiceId = req.params.invoiceId;
+        const Invoice = require('../models/Invoice');
+
+        // Find if this is an internal ObjectId or a custom invoiceId
+        let filter = { invoiceId }; // Assume it's an ObjectId for the audit log
+
+        // If it looks like 'INV-', let's find the matching ObjectId from the Invoices table
+        if (invoiceId.startsWith('INV-')) {
+            const invoice = await Invoice.findOne({ invoiceId });
+            if (invoice) filter = { invoiceId: invoice._id };
+        }
+
+        const logs = await AuditLog.find(filter)
             .populate('performedBy', 'name email role')
             .sort({ createdAt: -1 });
 

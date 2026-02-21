@@ -9,30 +9,37 @@ const { createAuditLog } = require('../services/audit.service');
  */
 const verifyInvoice = async (req, res, next) => {
     try {
-        const invoice = await Invoice.findById(req.params.invoiceId)
-            .populate('msmeId', 'name email organization')
+        const { invoiceId } = req.params;
+
+        // Find by invoiceId or invoiceHash (since it could be either)
+        const invoice = await Invoice.findOne({
+            $or: [{ invoiceId }, { invoiceHash: invoiceId }]
+        })
+            .populate('uploadedBy', 'name email organization')
             .populate('financedBy', 'name email organization');
 
         if (!invoice) {
-            return next(new AppError('Invoice not found', 404));
+            return next(new AppError('Invoice not found in database', 404));
         }
 
         // On-chain verification
         let onChainStatus = null;
         try {
-            onChainStatus = await verifyInvoiceOnChain(invoice.fileHash);
+            onChainStatus = await verifyInvoiceOnChain(invoice.invoiceHash);
         } catch (bcError) {
             console.warn('On-chain verification unavailable:', bcError.message);
         }
 
         const canFinance =
-            invoice.status !== 'financed' && (!onChainStatus || !onChainStatus.financed);
+            invoice.status !== 'FINANCED' && (!onChainStatus || !onChainStatus.financed) && (onChainStatus && onChainStatus.registered);
+
+        const isDuplicate = invoice.status === 'FINANCED' || (onChainStatus && onChainStatus.financed) || false;
 
         await createAuditLog({
             action: 'invoice_verified',
             performedBy: req.user.id,
             invoiceId: invoice._id,
-            details: { canFinance, onChainStatus },
+            details: { valid: true, duplicate: isDuplicate, financed: isDuplicate, onChainStatus },
             ipAddress: req.ip,
         });
 
@@ -41,16 +48,21 @@ const verifyInvoice = async (req, res, next) => {
             data: {
                 invoice: {
                     id: invoice._id,
-                    invoiceNumber: invoice.invoiceNumber,
+                    invoiceId: invoice.invoiceId,
                     amount: invoice.amount,
                     currency: invoice.currency,
                     status: invoice.status,
-                    fileHash: invoice.fileHash,
-                    msme: invoice.msmeId,
+                    invoiceHash: invoice.invoiceHash,
+                    uploadedBy: invoice.uploadedBy,
                     financedBy: invoice.financedBy,
                     financedAt: invoice.financedAt,
                 },
-                blockchain: onChainStatus,
+                verification: {
+                    valid: true,
+                    duplicate: isDuplicate,
+                    financed: isDuplicate,
+                    registeredOnChain: onChainStatus ? onChainStatus.registered : false
+                },
                 canFinance,
             },
         });
@@ -65,14 +77,17 @@ const verifyInvoice = async (req, res, next) => {
  */
 const financeInvoice = async (req, res, next) => {
     try {
-        const invoice = await Invoice.findById(req.params.invoiceId);
+        const { invoiceId } = req.params;
+        const invoice = await Invoice.findOne({
+            $or: [{ invoiceId }, { invoiceHash: invoiceId }]
+        });
 
         if (!invoice) {
             return next(new AppError('Invoice not found', 404));
         }
 
         // Block duplicate financing
-        if (invoice.status === 'financed') {
+        if (invoice.status === 'FINANCED') {
             await createAuditLog({
                 action: 'finance_blocked_duplicate',
                 performedBy: req.user.id,
@@ -84,16 +99,26 @@ const financeInvoice = async (req, res, next) => {
             return next(new AppError('This invoice has already been financed', 409));
         }
 
+        // Check on-chain status
+        const onChainStatus = await verifyInvoiceOnChain(invoice.invoiceHash);
+        if (!onChainStatus || !onChainStatus.registered) {
+            return next(new AppError('Invoice must be registered on the blockchain before financing', 422));
+        }
+        if (onChainStatus.financed) {
+            return next(new AppError('This invoice has already been marked as financed on the blockchain', 409));
+        }
+
         // Mark on-chain
         let blockchainResult = null;
         try {
-            blockchainResult = await markInvoiceFinancedOnChain(invoice.fileHash);
+            blockchainResult = await markInvoiceFinancedOnChain(invoice.invoiceHash);
         } catch (bcError) {
-            console.warn('Blockchain finance marking failed, proceeding off-chain:', bcError.message);
+            console.warn('Blockchain finance marking failed:', bcError.message);
+            return next(new AppError(`Blockchain finance marking failed: ${bcError.message}`, 500));
         }
 
         // Update DB
-        invoice.status = 'financed';
+        invoice.status = 'FINANCED';
         invoice.financedBy = req.user.id;
         invoice.financedAt = new Date();
         invoice.financeTxHash = blockchainResult?.txHash || null;
@@ -105,9 +130,9 @@ const financeInvoice = async (req, res, next) => {
             invoiceId: invoice._id,
             txHash: blockchainResult?.txHash || null,
             details: {
-                invoiceNumber: invoice.invoiceNumber,
+                invoiceId: invoice.invoiceId,
                 amount: invoice.amount,
-                fileHash: invoice.fileHash,
+                invoiceHash: invoice.invoiceHash,
             },
             ipAddress: req.ip,
         });
@@ -118,7 +143,7 @@ const financeInvoice = async (req, res, next) => {
             data: {
                 invoice: {
                     id: invoice._id,
-                    invoiceNumber: invoice.invoiceNumber,
+                    invoiceId: invoice.invoiceId,
                     amount: invoice.amount,
                     status: invoice.status,
                     financedBy: req.user.id,

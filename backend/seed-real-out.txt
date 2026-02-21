@@ -1,0 +1,14 @@
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+MongoDB connected for seeding...
+🌱 Starting database seed...
+🗑️  Cleared existing Users, Invoices, and Audit Logs
+👤 Created 4 seed users
+
+❌ SEED FAILED: TypeError: Cannot read properties of undefined (reading '_id')
+    at runSeed (D:\finovax\backend\src\scripts\seed.js:78:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Command failed: node src/scripts/seed.js
+❌ SEED FAILED: TypeError: Cannot read properties of undefined (reading '_id')
+    at runSeed (D:\finovax\backend\src\scripts\seed.js:78:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

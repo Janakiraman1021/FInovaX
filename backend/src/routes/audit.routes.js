@@ -7,10 +7,10 @@ const { authorize } = require('../middleware/rbac');
 // All routes are protected — auditor only
 router.use(protect, authorize('auditor'));
 
-// GET /api/audit/logs — paginated audit logs
-router.get('/logs', getAuditLogs);
+// GET /audit/system — paginated audit logs
+router.get('/system', getAuditLogs);
 
-// GET /api/audit/logs/:invoiceId — logs for a specific invoice
-router.get('/logs/:invoiceId', getInvoiceAuditLogs);
+// GET /audit/invoice/:invoiceId — logs for a specific invoice
+router.get('/invoice/:invoiceId', getInvoiceAuditLogs);
 
 module.exports = router;
