@@ -10,7 +10,7 @@ export default function PendingPage() {
             status="PENDING"
             emptyMessage="No pending invoices — all caught up!"
             accentClass="text-mg-lavender"
-            icon={Clock}
+            icon={<Clock className="w-4 h-4" />}
             uploadLink
         />
     );

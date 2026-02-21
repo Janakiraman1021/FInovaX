@@ -52,7 +52,7 @@ export const HashVerifier = () => {
             }
             
             // Handle NOT_FOUND case
-            if (d.verification.status === 'NOT_FOUND' || !d.invoice) {
+            if (!d.invoice || !d.verification.valid) {
                 setResult({ kind: "not_found" });
                 toast.warning("Hash not found", { description: "No invoice with this ID or hash exists on the ledger." });
                 return;

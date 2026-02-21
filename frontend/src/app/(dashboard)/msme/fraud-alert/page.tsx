@@ -10,7 +10,7 @@ export default function FraudAlertPage() {
             status="FRAUD_ALERT"
             emptyMessage="No fraud alerts detected — your portfolio is clean"
             accentClass="text-status-danger"
-            icon={AlertTriangle}
+            icon={<AlertTriangle className="w-4 h-4" />}
             iconBg="rgba(220,38,38,0.08)"
         />
     );
