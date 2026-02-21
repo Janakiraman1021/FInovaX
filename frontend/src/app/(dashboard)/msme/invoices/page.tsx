@@ -5,7 +5,7 @@ import { invoiceAPI, authAPI, blockchainAPI, UploadedInvoice, LenderListItem, AP
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { ExternalLink, FileText, Search, RefreshCw, AlertCircle, Copy, Check, Link2, Loader2, Send, X } from "lucide-react";
+import { BookOpen, ExternalLink, FileText, Search, RefreshCw, AlertCircle, Copy, Check, Link2, Loader2, Send, X, Eye } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -116,7 +116,7 @@ export default function MSMEInvoicesPage() {
         } catch (err: unknown) {
             let msg = "Submission failed";
             if (err instanceof APIError && err.errorCode === "DUPLICATE_LENDER_SUBMISSION") {
-                msg = "This invoice was already submitted to this lender.";
+                msg = "You have already submitted this receivable to this lender. Please choose a different lender.";
             } else if (err instanceof Error) {
                 msg = err.message;
             }
@@ -328,11 +328,18 @@ export default function MSMEInvoicesPage() {
                                         )}
                                     </td>
                                     <td>
-                                        <button
-                                            onClick={() => handleOpenSubmitModal(inv)}
-                                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all hover:bg-mg-cosmic/10 hover:text-mg-lavender border border-mg-lavender/20 hover:border-mg-lavender/40 text-mg-muted whitespace-nowrap">
-                                            <Send className="w-3 h-3" /> Submit to Lender
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <Link
+                                                href={`/msme/invoices/details?id=${encodeURIComponent(inv.invoiceId)}`}
+                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all hover:bg-mg-cosmic/10 hover:text-mg-lavender border border-mg-lavender/20 hover:border-mg-lavender/40 text-mg-muted whitespace-nowrap">
+                                                <Eye className="w-3 h-3" /> View Details
+                                            </Link>
+                                            <button
+                                                onClick={() => handleOpenSubmitModal(inv)}
+                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all hover:bg-mg-cosmic/10 hover:text-mg-lavender border border-mg-lavender/20 hover:border-mg-lavender/40 text-mg-muted whitespace-nowrap">
+                                                <Send className="w-3 h-3" /> Submit to Lender
+                                            </button>
+                                        </div>
                                     </td>
                                 </motion.tr>
                             ))}

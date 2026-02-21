@@ -134,7 +134,9 @@ export const InvoiceUploader = () => {
             
             if (err instanceof APIError) {
                 if (err.errorCode === "DUPLICATE_FILE_HASH") {
-                    msg = "This file was already uploaded. Each document can only be registered once.";
+                    msg = "You have already uploaded this file. To submit it to a lender, use the 'Submit to Lender' option from your invoice list.";
+                } else if (err.errorCode === "DUPLICATE_LENDER_SUBMISSION") {
+                    msg = "You have already submitted this receivable to this lender. Please choose a different lender or upload a different invoice.";
                 } else {
                     msg = err.message;
                 }

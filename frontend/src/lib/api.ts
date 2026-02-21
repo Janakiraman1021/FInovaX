@@ -353,6 +353,92 @@ export const auditorAPI = {
         ),
 };
 
+// ─── Trust & Timeline APIs ────────────────────────────────────────────────────
+
+export interface TrustScore {
+    trustScore: number;
+    status: 'EXCELLENT' | 'STABLE' | 'RISKY';
+}
+
+export interface TimelineEvent {
+    type: 'SYSTEM_EVENT' | 'ASSURANCE_REPORT';
+    event: string;
+    timestamp: string;
+    details: Record<string, unknown>;
+}
+
+export interface AssuranceReport {
+    _id: string;
+    invoiceId: string;
+    receivableFingerprint: string;
+    submittedBy: string;
+    usageCategory: 'WORKING_CAPITAL' | 'EXPANSION' | 'DEBT_REPAYMENT' | 'OTHER';
+    description?: string;
+    status: 'PENDING' | 'ACKNOWLEDGED';
+    acknowledgedBy?: string;
+    acknowledgedAt?: string;
+    createdAt: string;
+}
+
+export const trustAPI = {
+    /** GET /api/v1/trust/trustscore/me — get my trust score (MSME) */
+    getMyTrustScore: (token: string) =>
+        apiRequest<{ success: boolean; data: TrustScore }>(
+            "/api/v1/trust/trustscore/me",
+            { headers: { Authorization: `Bearer ${token}` } }
+        ),
+
+    /** GET /api/v1/trust/trustscore/msme/:msmeId — get MSME trust score (Lender/Auditor) */
+    getMSMETrustScore: (token: string, msmeId: string) =>
+        apiRequest<{ success: boolean; data: TrustScore }>(
+            `/api/v1/trust/trustscore/msme/${encodeURIComponent(msmeId)}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        ),
+
+    /** GET /api/v1/trust/timeline/invoice/:invoiceId — get invoice timeline */
+    getInvoiceTimeline: (token: string, invoiceId: string) =>
+        apiRequest<{ success: boolean; data: { invoice: { invoiceId: string; status: string }; timeline: TimelineEvent[] } }>(
+            `/api/v1/trust/timeline/invoice/${encodeURIComponent(invoiceId)}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        ),
+
+    /** GET /api/v1/trust/timeline/receivable/:fingerprint — get receivable timeline */
+    getReceivableTimeline: (token: string, fingerprint: string) =>
+        apiRequest<{ success: boolean; data: { receivableFingerprint: string; timeline: TimelineEvent[] } }>(
+            `/api/v1/trust/timeline/receivable/${encodeURIComponent(fingerprint)}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        ),
+
+    /** POST /api/v1/trust/assurance/submit — submit assurance report (MSME) */
+    submitAssuranceReport: (token: string, payload: { invoiceId: string; usageCategory: string; description?: string }) =>
+        apiRequest<{ success: boolean; message: string; data: AssuranceReport }>(
+            "/api/v1/trust/assurance/submit",
+            {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: JSON.stringify(payload),
+            }
+        ),
+
+    /** POST /api/v1/trust/assurance/acknowledge — acknowledge assurance report (Lender) */
+    acknowledgeAssuranceReport: (token: string, payload: { reportId: string }) =>
+        apiRequest<{ success: boolean; message: string; data: AssuranceReport }>(
+            "/api/v1/trust/assurance/acknowledge",
+            {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: JSON.stringify(payload),
+            }
+        ),
+
+    /** GET /api/v1/trust/assurance/invoice/:invoiceId — get assurance report for invoice */
+    getAssuranceReport: (token: string, invoiceId: string) =>
+        apiRequest<{ success: boolean; data: AssuranceReport | null }>(
+            `/api/v1/trust/assurance/invoice/${encodeURIComponent(invoiceId)}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        ),
+};
+
 
 export const api = {
     auth: {

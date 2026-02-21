@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { InvoiceUploader } from "@/components/oneflow/InvoiceUploader";
+import { TrustScoreCard } from "@/components/shared/TrustScoreCard";
 import { invoiceAPI, UploadedInvoice } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -130,7 +131,10 @@ export default function MSMEDashboardPage() {
                         </table>
                     </div>
                 </div>
-                <div><InvoiceUploader /></div>
+                <div className="space-y-6">
+                    <TrustScoreCard detailed />
+                    <InvoiceUploader />
+                </div>
             </div>
         </div>
     );

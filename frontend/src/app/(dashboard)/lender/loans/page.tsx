@@ -5,7 +5,7 @@ import { lenderAPI, LenderInvoice, APIError } from "@/lib/api";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { BookOpen, ExternalLink, Search, RefreshCw, AlertCircle, ShieldCheck, Copy, Check, Loader2, Banknote, Lock } from "lucide-react";
+import { BookOpen, ExternalLink, Search, RefreshCw, AlertCircle, ShieldCheck, Copy, Check, Loader2, Banknote, Lock, Eye } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -206,6 +206,12 @@ export default function LenderLoans() {
                                         <td><StatusBadge status={inv.status} /></td>
                                         <td>
                                             <div className="flex items-center gap-2">
+                                                <Link
+                                                    href={`/lender/loans/details?id=${encodeURIComponent(inv.invoiceId)}`}
+                                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+                                                    style={{ background: "rgba(74,78,143,0.08)", border: "1px solid rgba(74,78,143,0.18)", color: "#8b8fc8" }}>
+                                                    <Eye className="w-3 h-3" /> Details
+                                                </Link>
                                                 <Link
                                                     href={`/lender/verify-hash?hash=${encodeURIComponent(inv.invoiceHash)}`}
                                                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"

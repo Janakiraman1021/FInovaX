@@ -73,82 +73,123 @@ const createInvoice = async (req, res, next) => {
         });
 
         // ✅ ACTION 1 & 4 RULE: Conditional Validation
+        let invoice = null;
+        let isExistingInvoice = false;
+
         if (!submittedTo) {
-            // Initial Upload (Action 1): Check global fileHash
-            const existingFile = await Invoice.findOne({ invoiceHash });
+            // Initial Upload (Action 1): Check if THIS USER uploaded this file before
+            const existingFile = await Invoice.findOne({ 
+                invoiceHash,
+                uploadedBy: req.user.id 
+            });
             if (existingFile) {
-                return next(new AppError('This file has already been uploaded. Duplicate file detected.', 409, 'DUPLICATE_FILE_HASH'));
+                return next(new AppError('You have already uploaded this file. To submit it to a lender, use the "Submit to Lender" option from your invoice list.', 409, 'DUPLICATE_FILE_HASH'));
             }
         } else {
-            // Upload + Submit (Action 4): Bypass global checks to allow Discovery
-            // Action 3: Only block if same lender re-submission
-            const existingSubmission = await LenderSubmission.findOne({
+            // Upload + Submit (Action 4): Allow parallel discovery to different lenders
+            // Check if this user already has an invoice with this receivableFingerprint
+            const existingInvoice = await Invoice.findOne({
                 receivableFingerprint,
-                lenderId: submittedTo
+                uploadedBy: req.user.id
             });
 
-            if (existingSubmission) {
-                // Check if the specific file was also the same for this lender
-                const duplicateInvoiceForLender = await Invoice.findOne({
+            if (existingInvoice) {
+                // Found existing invoice - check if submitting to same lender
+                const existingSubmission = await LenderSubmission.findOne({
                     receivableFingerprint,
-                    invoiceHash,
-                    submittedTo: { $in: [submittedTo] }
+                    lenderId: submittedTo
                 });
 
-                if (duplicateInvoiceForLender) {
+                if (existingSubmission) {
                     const { updateTrustScore } = require('../services/trust.service');
                     await updateTrustScore(req.user.id, 'DUPLICATE_ATTEMPT', {
                         reason: 'same_lender_duplicate_upload',
                         lenderId: submittedTo
                     });
                     return next(new AppError(
-                        'You have already submitted this specific invoice file to this lender',
+                        'You have already submitted this receivable to this lender. Please choose a different lender or upload a different invoice.',
                         409,
-                        'DUPLICATE_SUBMISSION_SAME_LENDER'
+                        'DUPLICATE_LENDER_SUBMISSION'
+                    ));
+                }
+
+                // Different lender - reuse existing invoice and add new submission
+                invoice = existingInvoice;
+                isExistingInvoice = true;
+
+                // Add lender to submittedTo array
+                if (!invoice.submittedTo.includes(submittedTo)) {
+                    invoice.submittedTo.push(submittedTo);
+                    await invoice.save();
+                }
+            } else {
+                // No existing invoice - will create new one below
+                const duplicateSubmission = await LenderSubmission.findOne({
+                    receivableFingerprint,
+                    lenderId: submittedTo
+                });
+
+                if (duplicateSubmission) {
+                    const { updateTrustScore } = require('../services/trust.service');
+                    await updateTrustScore(req.user.id, 'DUPLICATE_ATTEMPT', {
+                        reason: 'same_lender_duplicate_upload',
+                        lenderId: submittedTo
+                    });
+                    return next(new AppError(
+                        'You have already submitted this receivable to this lender. Please choose a different lender or upload a different invoice.',
+                        409,
+                        'DUPLICATE_LENDER_SUBMISSION'
                     ));
                 }
             }
         }
 
-        // 3. Upload to IPFS
-        const ipfsResult = await uploadToIPFS(fileBuffer, req.file.originalname);
-
-        // 5. Anchor to Blockchain (Informational Registration)
-        let blockchainResult = null;
-        try {
-            // Register both the document hash and the business obligation fingerprint
-            const [regInvoice, regReceivable] = await Promise.all([
-                registerInvoiceOnChain(invoiceHash, invoiceId),
-                registerReceivableOnChain(receivableFingerprint)
-            ]);
-            blockchainResult = {
-                invoiceTx: regInvoice?.txHash,
-                receivableTx: regReceivable?.txHash
-            };
-        } catch (bcError) {
-            console.warn('Blockchain registration deferred or failed during upload:', bcError.message);
+        // 3. Upload to IPFS (only if new invoice)
+        let ipfsResult = null;
+        if (!isExistingInvoice) {
+            ipfsResult = await uploadToIPFS(fileBuffer, req.file.originalname);
         }
 
-        // 6. Save invoice metadata to MongoDB
-        const invoice = await Invoice.create({
-            invoiceId,
-            uploadedBy: req.user.id,
-            amount: parseFloat(amount || 0),
-            currency: currency || 'INR',
-            description,
-            invoiceHash,
-            receivableFingerprint,
-            sellerGSTIN,
-            buyerGSTIN,
-            poReference,
-            invoiceDate: parsedInvoiceDate,
-            dueDate: parsedDueDate,
-            ipfsCID: ipfsResult.cid,
-            originalFileName: req.file.originalname,
-            status: 'UPLOADED',
-            submittedTo: submissionArray,
-            blockchainTxHash: blockchainResult?.invoiceTx || null,
-        });
+        // 5. Anchor to Blockchain (only if new invoice)
+        let blockchainResult = null;
+        if (!isExistingInvoice) {
+            try {
+                // Register both the document hash and the business obligation fingerprint
+                const [regInvoice, regReceivable] = await Promise.all([
+                    registerInvoiceOnChain(invoiceHash, invoiceId),
+                    registerReceivableOnChain(receivableFingerprint)
+                ]);
+                blockchainResult = {
+                    invoiceTx: regInvoice?.txHash,
+                    receivableTx: regReceivable?.txHash
+                };
+            } catch (bcError) {
+                console.warn('Blockchain registration deferred or failed during upload:', bcError.message);
+            }
+        }
+
+        // 6. Save invoice metadata to MongoDB (only if new invoice)
+        if (!isExistingInvoice) {
+            invoice = await Invoice.create({
+                invoiceId,
+                uploadedBy: req.user.id,
+                amount: parseFloat(amount || 0),
+                currency: currency || 'INR',
+                description,
+                invoiceHash,
+                receivableFingerprint,
+                sellerGSTIN,
+                buyerGSTIN,
+                poReference,
+                invoiceDate: parsedInvoiceDate,
+                dueDate: parsedDueDate,
+                ipfsCID: ipfsResult.cid,
+                originalFileName: req.file.originalname,
+                status: 'UPLOADED',
+                submittedTo: submissionArray,
+                blockchainTxHash: blockchainResult?.invoiceTx || null,
+            });
+        }
 
         // 7. Create LenderSubmission record if lender was selected
         if (submittedTo) {
@@ -172,32 +213,43 @@ const createInvoice = async (req, res, next) => {
         }
 
         // 8. Audit logs
+        const auditAction = isExistingInvoice 
+            ? (submittedTo ? 'invoice_submitted_to_additional_lender' : 'invoice_uploaded')
+            : 'invoice_uploaded';
+
         await createAuditLog({
-            action: 'invoice_uploaded',
+            action: auditAction,
             performedBy: req.user.id,
             invoiceId: invoice._id,
             receivableFingerprint: invoice.receivableFingerprint,
             details: {
-                invoiceId,
-                invoiceHash,
-                receivableFingerprint,
-                ipfsCID: ipfsResult.cid,
-                lenderSelected: submittedTo ? true : false
+                invoiceId: invoice.invoiceId,
+                invoiceHash: invoice.invoiceHash,
+                receivableFingerprint: invoice.receivableFingerprint,
+                ipfsCID: invoice.ipfsCID,
+                lenderSelected: submittedTo ? true : false,
+                isExistingInvoice
             },
             ipAddress: req.ip,
             requestId: req.requestId,
         });
 
-        // 9. Log receivable registration (internal audit)
-        await createAuditLog({
-            action: 'RECEIVABLE_REGISTERED',
-            performedBy: req.user.id,
-            invoiceId: invoice._id,
-            receivableFingerprint: invoice.receivableFingerprint,
-            details: { receivableFingerprint },
-            ipAddress: req.ip,
-            requestId: req.requestId,
-        });
+        // 9. Log receivable registration (internal audit) - only for new invoices
+        if (!isExistingInvoice) {
+            await createAuditLog({
+                action: 'RECEIVABLE_REGISTERED',
+                performedBy: req.user.id,
+                invoiceId: invoice._id,
+                receivableFingerprint: invoice.receivableFingerprint,
+                details: { receivableFingerprint },
+                ipAddress: req.ip,
+                requestId: req.requestId,
+            });
+        }
+
+        const responseMessage = isExistingInvoice
+            ? `Invoice submitted to additional lender successfully.`
+            : 'Invoice uploaded securely. Pending blockchain verification by lender.';
 
         return sendResponse(res, 201, {
             invoice: {
@@ -211,7 +263,7 @@ const createInvoice = async (req, res, next) => {
                 currency: invoice.currency,
                 createdAt: invoice.createdAt,
             },
-        }, 'Invoice uploaded securely. Pending blockchain verification by lender.');
+        }, responseMessage);
     } catch (error) {
         if (error.name === 'ValidationError') {
             return next(new AppError(Object.values(error.errors).map(val => val.message).join(', '), 400));
@@ -314,9 +366,9 @@ const submitInvoice = async (req, res, next) => {
                 lenderId: lenderId
             });
             return next(new AppError(
-                'You have already submitted this business obligation to this lender',
+                'You have already submitted this receivable to this lender. Please choose a different lender.',
                 409,
-                'DUPLICATE_SUBMISSION_SAME_LENDER'
+                'DUPLICATE_LENDER_SUBMISSION'
             ));
         }
 
