@@ -4,6 +4,7 @@ const Invoice = require('../models/Invoice');
 const AppError = require('../utils/AppError');
 const { hashBuffer, generateReceivableFingerprint } = require('../utils/hash');
 const { uploadToIPFS } = require('../services/ipfs.service');
+const { registerInvoiceOnChain, registerReceivableOnChain } = require('../services/blockchain.service');
 const { createAuditLog } = require('../services/audit.service');
 const { sendResponse } = require('../utils/response');
 
@@ -38,9 +39,16 @@ const createInvoice = async (req, res, next) => {
             buyerGSTIN,
             poReference,
             invoiceDate,
-            dueDate
+            dueDate,
+            submittedTo
         } = req.body;
         const fileBuffer = req.file.buffer;
+
+        // Verify lender exists if submittedTo is provided
+        if (submittedTo) {
+            const lender = await User.findOne({ _id: submittedTo, role: 'lender' });
+            if (!lender) return next(new AppError('Invalid lender selected for submission', 400));
+        }
 
         // Generate unique invoiceId
         const invoiceId = `INV-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
@@ -75,7 +83,23 @@ const createInvoice = async (req, res, next) => {
         // 5. Upload to IPFS
         const ipfsResult = await uploadToIPFS(fileBuffer, req.file.originalname);
 
-        // 6. Save invoice metadata to MongoDB (DO NOT WRITE TO BLOCKCHAIN YET)
+        // 6. Anchor to Blockchain (Informational Registration)
+        let blockchainResult = null;
+        try {
+            // Register both the document hash and the business obligation fingerprint
+            const [regInvoice, regReceivable] = await Promise.all([
+                registerInvoiceOnChain(invoiceHash, invoiceId),
+                registerReceivableOnChain(receivableFingerprint)
+            ]);
+            blockchainResult = {
+                invoiceTx: regInvoice?.txHash,
+                receivableTx: regReceivable?.txHash
+            };
+        } catch (bcError) {
+            console.warn('Blockchain registration deferred or failed during upload:', bcError.message);
+        }
+
+        // 7. Save invoice metadata to MongoDB
         const invoice = await Invoice.create({
             invoiceId,
             uploadedBy: req.user.id,
@@ -92,6 +116,8 @@ const createInvoice = async (req, res, next) => {
             ipfsCID: ipfsResult.cid,
             originalFileName: req.file.originalname,
             status: 'UPLOADED',
+            submittedTo: submittedTo || null,
+            blockchainTxHash: blockchainResult?.invoiceTx || null,
         });
 
         // 5. Audit log
@@ -162,16 +188,28 @@ const getMyInvoices = async (req, res, next) => {
 
         const [invoices, total] = await Promise.all([
             Invoice.find(filter)
-                .populate('uploadedBy', 'name email organization')
-                .populate('financedBy', 'name email organization')
+                .populate('uploadedBy', 'name organization')
+                .populate('submittedTo', 'name organization') // Only basic lender info
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(parseInt(limit)),
             Invoice.countDocuments(filter),
         ]);
 
+        // Mask internal lender IDs and sensitive financier details for MSME visibility
+        const maskedInvoices = invoices.map(inv => {
+            const invObj = inv.toObject();
+            if (invObj.financedBy) {
+                // If financed, we show it was financed, but keep lender details minimal as per banking workflow requirements
+                invObj.financedBy = {
+                    organization: inv.financedBy?.organization || 'Confidential Lender'
+                };
+            }
+            return invObj;
+        });
+
         return sendResponse(res, 200, {
-            invoices,
+            invoices: maskedInvoices,
             pagination: {
                 total,
                 page: parseInt(page),

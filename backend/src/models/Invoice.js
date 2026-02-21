@@ -15,6 +15,11 @@ const invoiceSchema = new mongoose.Schema(
             required: [true, 'Uploader reference is required'],
             index: true,
         },
+        submittedTo: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            index: true,
+        },
         amount: {
             type: Number,
             required: [true, 'Invoice amount is required'],

@@ -5,6 +5,7 @@ const CONTRACT_ABI = [
     'function registerInvoice(bytes32 invoiceHash, string invoiceId) external',
     'function financeInvoice(bytes32 invoiceHash) external',
     'function registerReceivable(bytes32 receivableFingerprint) external',
+    'function financeReceivable(bytes32 receivableFingerprint) external',
     'function isRegistered(bytes32 invoiceHash) external view returns (bool)',
     'function isFinanced(bytes32 invoiceHash) external view returns (bool)',
     'function isReceivableFinanced(bytes32 receivableFingerprint) external view returns (bool)',
@@ -14,9 +15,10 @@ const CONTRACT_ABI = [
     'function revokeLender(address lender) external',
     'event InvoiceRegistered(bytes32 indexed invoiceHash, string invoiceId, address indexed registeredBy, uint256 timestamp)',
     'event InvoiceFinanced(bytes32 indexed invoiceHash, address indexed lender, uint256 timestamp)',
-    'event ReceivableFinanced(bytes32 indexed receivableFingerprint, address indexed lender, uint256 timestamp)',
+    'event ReceivableRegistered(bytes32 indexed receivableFingerprint)',
+    'event ReceivableFinanced(bytes32 indexed receivableFingerprint, address indexed lender)',
+    'event DuplicateReceivableAttempt(bytes32 indexed receivableFingerprint, address indexed lender)',
     'event DuplicateFinancingAttempt(bytes32 indexed invoiceHash, address indexed attemptedBy, uint256 timestamp)',
-    'event DuplicateReceivableFinancingAttempt(bytes32 indexed receivableFingerprint, address indexed attemptedBy, uint256 timestamp)',
 ];
 
 let provider = null;
@@ -180,10 +182,34 @@ const verifyReceivableOnChain = async (fingerprint) => {
     }
 };
 
+/**
+ * Mark a receivable as financed on the blockchain.
+ * @param {string} fingerprint - SHA-256 hex hash of receivable metadata.
+ */
+const markReceivableFinancedOnChain = async (fingerprint) => {
+    if (!contract && !initBlockchain()) {
+        return null;
+    }
+
+    try {
+        const hashBytes = toBytes32(fingerprint);
+        const tx = await contract.financeReceivable(hashBytes);
+        const receipt = await tx.wait();
+
+        console.log(`✅ Receivable marked financed on-chain: ${receipt.hash}`);
+        return { txHash: receipt.hash };
+    } catch (error) {
+        console.error('Blockchain financeReceivable error:', error.message);
+        // Catch specific revert message for custom error handling in controller if needed
+        throw new Error(`Blockchain receivable financing failed: ${error.reason || error.message}`);
+    }
+};
+
 module.exports = {
     registerInvoiceOnChain,
     markInvoiceFinancedOnChain,
     verifyInvoiceOnChain,
     registerReceivableOnChain,
+    markReceivableFinancedOnChain,
     verifyReceivableOnChain,
 };

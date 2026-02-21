@@ -157,4 +157,19 @@ const updateMe = async (req, res, next) => {
     }
 };
 
-module.exports = { register, login, getMe, updateMe };
+/**
+ * GET /api/auth/lenders
+ * Get list of available lenders. MSME only.
+ */
+const getLenders = async (req, res, next) => {
+    try {
+        const lenders = await User.find({ role: 'lender', isActive: true })
+            .select('name organization email');
+
+        return sendResponse(res, 200, lenders);
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { register, login, getMe, updateMe, getLenders };

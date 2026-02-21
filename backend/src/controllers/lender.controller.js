@@ -1,6 +1,6 @@
 const Invoice = require('../models/Invoice');
 const AppError = require('../utils/AppError');
-const { verifyInvoiceOnChain, markInvoiceFinancedOnChain, registerReceivableOnChain, verifyReceivableOnChain } = require('../services/blockchain.service');
+const { verifyInvoiceOnChain, markInvoiceFinancedOnChain, registerReceivableOnChain, verifyReceivableOnChain, markReceivableFinancedOnChain } = require('../services/blockchain.service');
 const { createAuditLog } = require('../services/audit.service');
 const { sendResponse } = require('../utils/response');
 
@@ -10,16 +10,16 @@ const { sendResponse } = require('../utils/response');
  */
 const getAllInvoices = async (req, res, next) => {
     try {
-        const { page = 1, limit = 50, status } = req.query;
+        const { status, page = 1, limit = 20 } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const filter = {};
+        // STRICT RBAC: Only see invoices explicitly submitted to this lender
+        const filter = { submittedTo: req.user.id };
         if (status) filter.status = status.toUpperCase();
 
         const [invoices, total] = await Promise.all([
             Invoice.find(filter)
-                .populate('uploadedBy', 'name email organization')
-                .populate('financedBy', 'name email organization')
+                .populate('uploadedBy', 'name organization')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(parseInt(limit)),
@@ -46,90 +46,48 @@ const getAllInvoices = async (req, res, next) => {
  */
 const verifyInvoice = async (req, res, next) => {
     try {
-        const { invoiceId } = req.params;
+        const identifier = req.params.invoiceId;
 
-        // Find by invoiceId or invoiceHash (since it could be either)
+        // 1. Find invoice in DB
+        // STRICT RBAC: Lender can only verify if they are the designated recipient 
+        // OR if they have the specific ID (Option B support)
         const invoice = await Invoice.findOne({
-            $or: [{ invoiceId }, { invoiceHash: invoiceId }]
-        });
+            $or: [
+                { invoiceId: identifier },
+                { invoiceHash: identifier }
+            ]
+        }).populate('uploadedBy', 'organization');
 
         if (!invoice) {
-            return sendResponse(res, 200, {
-                verification: {
-                    status: 'NOT_FOUND',
-                    valid: false
-                }
-            }, 'Invoice not found');
+            return next(new AppError('Invoice not found or access denied', 404));
         }
 
-        // Check if receivable obligation is already financed by ANY document
-        const financedAny = await Invoice.findOne({
-            receivableFingerprint: invoice.receivableFingerprint,
-            status: 'FINANCED'
-        });
-
-        // On-chain verification
-        let onChainStatus = null;
-        let onChainReceivableStatus = null;
-        try {
-            [onChainStatus, onChainReceivableStatus] = await Promise.all([
-                verifyInvoiceOnChain(invoice.invoiceHash),
-                verifyReceivableOnChain(invoice.receivableFingerprint)
-            ]);
-        } catch (bcError) {
-            console.warn('On-chain verification unavailable:', bcError.message);
+        // Check if explicitly submitted to this lender
+        if (invoice.submittedTo && invoice.submittedTo.toString() !== req.user.id.toString()) {
+            return next(new AppError('This invoice was submitted to another lender. Access denied.', 403));
         }
 
-        const isFinanced =
-            invoice.status === 'FINANCED' ||
-            (financedAny && financedAny.status === 'FINANCED') ||
-            (onChainStatus && onChainStatus.financed) ||
-            (onChainReceivableStatus && onChainReceivableStatus.financed) ||
-            false;
+        // 2. Fetch on-chain status
+        const [bcFile, bcReceivable] = await Promise.all([
+            verifyInvoiceOnChain(invoice.invoiceHash),
+            verifyReceivableOnChain(invoice.receivableFingerprint),
+        ]);
 
-        let verificationLabel = 'VALID';
-        if (isFinanced) {
-            verificationLabel = 'RECEIVABLE_ALREADY_FINANCED';
-        }
-
-        const canFinance =
-            !isFinanced &&
-            (onChainStatus && onChainStatus.registered) &&
-            invoice.status !== 'BLOCKED';
-
-        await createAuditLog({
-            action: 'invoice_verified',
-            performedBy: req.user.id,
-            invoiceId: invoice._id,
-            receivableFingerprint: invoice.receivableFingerprint,
-            details: {
-                status: verificationLabel,
-                valid: !isFinanced,
-                duplicate: isFinanced,
-                onChainStatus
+        const verificationData = {
+            id: invoice.invoiceId,
+            status: invoice.status,
+            trustMetadata: {
+                isRegisteredOnChain: bcFile?.registered || false,
+                isDocumentFinanced: bcFile?.financed || false,
+                isReceivableFinanced: bcReceivable?.financed || false,
+                canFinance: !bcReceivable?.financed && invoice.status === 'UPLOADED'
             },
-            ipAddress: req.ip,
-            requestId: req.requestId,
-        });
+            msme: {
+                organization: invoice.uploadedBy.organization
+            }
+        };
 
-        return sendResponse(res, 200, {
-            invoice: {
-                invoiceId: invoice.invoiceId,
-                amount: invoice.amount,
-                currency: invoice.currency,
-                status: invoice.status,
-                invoiceHash: invoice.invoiceHash,
-                financedAt: invoice.financedAt,
-            },
-            verification: {
-                status: verificationLabel,
-                valid: !isFinanced,
-                duplicate: isFinanced,
-                financed: isFinanced,
-                registeredOnChain: onChainStatus ? onChainStatus.registered : false
-            },
-            canFinance,
-        });
+        return sendResponse(res, 200, verificationData, 'Verification result retrieved successfully');
     } catch (error) {
         next(error);
     }
@@ -142,17 +100,19 @@ const verifyInvoice = async (req, res, next) => {
 const financeInvoice = async (req, res, next) => {
     try {
         const { invoiceId } = req.params;
+
+        // 1. Validate invoice exists and is assigned to this lender
         const invoice = await Invoice.findOne({
-            $or: [{ invoiceId }, { invoiceHash: invoiceId }]
+            _id: invoiceId,
+            submittedTo: req.user.id
         });
 
         if (!invoice) {
-            return next(new AppError('Invoice not found', 404));
+            return next(new AppError('Invoice not found or not submitted to you', 404));
         }
 
-        // Block duplicate financing (Document level)
         if (invoice.status === 'FINANCED') {
-            return next(new AppError('This invoice document has already been financed', 409, 'INVOICE_ALREADY_FINANCED'));
+            return next(new AppError('Invoice is already marked as financed', 400, 'INVOICE_ALREADY_FINANCED'));
         }
         if (invoice.status === 'BLOCKED') {
             return next(new AppError('This invoice is BLOCKED due to duplicate obligation financing', 409, 'RECEIVABLE_ALREADY_FINANCED'));
@@ -187,7 +147,7 @@ const financeInvoice = async (req, res, next) => {
             // Anchor both document AND receivable fingerprint
             [docBlockchainResult, receivableBlockchainResult] = await Promise.all([
                 markInvoiceFinancedOnChain(invoice.invoiceHash),
-                registerReceivableOnChain(invoice.receivableFingerprint)
+                markReceivableFinancedOnChain(invoice.receivableFingerprint)
             ]);
         } catch (bcError) {
             console.error('Blockchain finance marking failed:', bcError.message);

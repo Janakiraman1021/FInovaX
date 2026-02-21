@@ -17,8 +17,10 @@ const getAllInvoices = async (req, res, next) => {
 
         const [invoices, total] = await Promise.all([
             Invoice.find(filter)
-                .populate('uploadedBy', 'name email organization')
-                .populate('financedBy', 'name email organization')
+                .populate('uploadedBy', 'organization')
+                .populate('financedBy', 'organization')
+                .populate('submittedTo', 'organization')
+                .select('-sellerGSTIN -buyerGSTIN -poReference -invoiceHash') // Mask sensitive business details
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(parseInt(limit)),
