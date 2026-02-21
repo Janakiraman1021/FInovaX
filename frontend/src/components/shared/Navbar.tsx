@@ -3,7 +3,6 @@
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { Wallet, Shield, LogOut, ChevronDown } from "lucide-react";
-import { UserRole } from "@/lib/mock/mockUsers";
 import { motion } from "framer-motion";
 
 const roleConfig: Record<string, { label: string; dot: string; accent: string }> = {
@@ -13,7 +12,7 @@ const roleConfig: Record<string, { label: string; dot: string; accent: string }>
 };
 
 export const Navbar = () => {
-    const { role, logout, switchRole, isDemoMode } = useAuth();
+    const { role, logout } = useAuth();
     const cfg = role ? roleConfig[role] : null;
     const walletAddress = "0x71C7...f6D2";
 
@@ -27,7 +26,7 @@ export const Navbar = () => {
             {/* ── Logo ── */}
             <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ background: "linear-gradient(135deg, #4a4e8f 0%, #a490c2 100%)", boxShadow: "0 0 16px rgba(74,78,143,0.40)" }}>
+                    style={{ background: "linear-gradient(135deg, #4a4e8f 0%, #6b5ea0 100%)", boxShadow: "0 0 12px rgba(74,78,143,0.22)" }}>
                     <Shield className="w-4 h-4 text-white" />
                 </div>
                 <div className="flex items-center gap-2.5">
@@ -50,27 +49,6 @@ export const Navbar = () => {
             {/* ── Right controls ── */}
             <div className="flex items-center gap-2">
 
-                {/* Demo role switcher */}
-                {isDemoMode && (
-                    <div className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-mg-card border border-mg-lavender/15">
-                        <span className="text-[9px] text-mg-dim uppercase font-bold tracking-widest mr-1">Role:</span>
-                        {(["msme", "lender", "auditor"] as UserRole[]).map((r) => (
-                            <button
-                                key={r}
-                                onClick={() => switchRole(r)}
-                                className={cn(
-                                    "px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wide transition-all duration-150",
-                                    role === r
-                                        ? "bg-mg-cosmic/40 text-mg-lavender border border-mg-lavender/30"
-                                        : "text-mg-dim hover:text-mg-silver hover:bg-mg-elevated/50"
-                                )}
-                            >
-                                {r}
-                            </button>
-                        ))}
-                    </div>
-                )}
-
                 {/* Divider */}
                 <div className="w-px h-6 bg-mg-lavender/10 mx-1" />
 
@@ -83,7 +61,7 @@ export const Navbar = () => {
                         </div>
                         <span className="text-[9px] uppercase tracking-wider font-semibold text-mg-lavender/50">Polygon zkEVM</span>
                     </div>
-                    <div className="w-2 h-2 rounded-full bg-status-success shadow-[0_0_8px_rgba(52,211,153,0.6)] animate-pulse" />
+                    <div className="w-2 h-2 rounded-full bg-status-success shadow-[0_0_6px_rgba(5,150,105,0.5)] animate-pulse" />
                 </div>
 
                 {/* Logout */}

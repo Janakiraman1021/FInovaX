@@ -45,7 +45,7 @@ export const InvoiceUploader = () => {
             {/* Header */}
             <div className="px-6 py-4 border-b border-mg-lavender/10 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ background: "linear-gradient(135deg, #4a4e8f, #a490c2)", boxShadow: "0 0 10px rgba(74,78,143,0.35)" }}>
+                    style={{ background: "linear-gradient(135deg, #4a4e8f, #6b5ea0)", boxShadow: "0 0 8px rgba(74,78,143,0.22)" }}>
                     <Upload className="w-4 h-4 text-white" />
                 </div>
                 <div>
@@ -85,7 +85,7 @@ export const InvoiceUploader = () => {
                             <motion.div key="selected" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
                                 className="flex flex-col items-center w-full">
                                 <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                                    style={{ background: "rgba(52,211,153,0.15)", border: "1px solid rgba(52,211,153,0.25)" }}>
+                                    style={{ background: "rgba(5,150,105,0.10)", border: "1px solid rgba(5,150,105,0.22)" }}>
                                     <CheckCircle className="w-6 h-6 text-status-success" />
                                 </div>
                                 <p className="font-medium text-mg-silver text-sm mb-0.5 text-center truncate max-w-full">{file.name}</p>
@@ -110,7 +110,7 @@ export const InvoiceUploader = () => {
                                                 animate={{ width: `${progress}%` }}
                                                 transition={{ duration: 0.5 }}
                                                 className="h-full rounded-full"
-                                                style={{ background: "linear-gradient(90deg, #4a4e8f, #a490c2)" }}
+                                                style={{ background: "linear-gradient(90deg, #4a4e8f, #6b5ea0)" }}
                                             />
                                         </div>
                                         <div className="flex items-center justify-center gap-2 text-xs text-mg-muted">

@@ -17,20 +17,20 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" className="dark">
+        <html lang="en">
             <body className={`${inter.className} min-h-screen`} style={{ background: 'var(--mg-base)', color: 'var(--mg-silver)' }}>
                 <AuthProvider>
                     {children}
                     <Toaster
                         position="top-right"
-                        theme="dark"
+                        theme="light"
                         richColors
                         toastOptions={{
                             style: {
-                                background: "rgba(10,8,30,0.95)",
-                                border: "1px solid rgba(167,139,250,0.30)",
+                                background: "#ffffff",
+                                border: "1px solid rgba(74,78,143,0.18)",
                                 backdropFilter: "blur(20px)",
-                                color: "#e2e8f0",
+                                color: "#1e1433",
                             },
                         }}
                     />

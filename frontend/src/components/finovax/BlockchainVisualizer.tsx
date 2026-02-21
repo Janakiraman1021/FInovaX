@@ -126,7 +126,7 @@ export default function BlockchainVisualizer() {
 
             {/* Vignette overlay */}
             <div className="absolute inset-0 pointer-events-none rounded-3xl"
-                style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(5,4,20,0.6) 100%)" }} />
+                style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(240,236,252,0.50) 100%)" }} />
         </div>
     );
 }

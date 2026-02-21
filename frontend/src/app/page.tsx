@@ -37,7 +37,7 @@ export default function LandingPage() {
             <header className="mg-navbar sticky top-0 z-50 h-14 px-8 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                        style={{ background: "linear-gradient(135deg, #4a4e8f, #a490c2)", boxShadow: "0 0 12px rgba(74,78,143,0.40)" }}>
+                        style={{ background: "linear-gradient(135deg, #4a4e8f, #6b5ea0)", boxShadow: "0 0 12px rgba(74,78,143,0.25)" }}>
                         <Shield className="w-3.5 h-3.5 text-white" />
                     </div>
                     <span className="font-bold text-mg-silver tracking-tight">
@@ -55,8 +55,8 @@ export default function LandingPage() {
             {/* ── Hero ── */}
             <section className="relative pt-28 pb-20 px-8 text-center max-w-5xl mx-auto">
                 {/* Ambient glow behind hero */}
-                <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full blur-[120px] opacity-25"
-                    style={{ background: "radial-gradient(ellipse, rgba(74,78,143,0.50) 0%, transparent 70%)" }} />
+                <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full blur-[120px] opacity-30"
+                    style={{ background: "radial-gradient(ellipse, rgba(74,78,143,0.22) 0%, transparent 70%)" }} />
 
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -135,7 +135,7 @@ export default function LandingPage() {
                             className="mg-card rounded-2xl p-6 group"
                         >
                             <div className="w-10 h-10 rounded-xl mb-4 flex items-center justify-center"
-                                style={{ background: "rgba(74,78,143,0.25)", border: "1px solid rgba(164,144,194,0.18)" }}>
+                                style={{ background: "rgba(74,78,143,0.09)", border: "1px solid rgba(74,78,143,0.18)" }}>
                                 <f.icon className="w-5 h-5 text-mg-lavender" />
                             </div>
                             <h3 className="font-semibold text-mg-silver mb-2">{f.title}</h3>
@@ -149,7 +149,7 @@ export default function LandingPage() {
             <section className="max-w-3xl mx-auto px-8 py-16 text-center">
                 <div className="mg-card rounded-3xl p-12 relative overflow-hidden">
                     <div className="pointer-events-none absolute inset-0 rounded-3xl"
-                        style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(74,78,143,0.18) 0%, transparent 70%)" }} />
+                        style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(74,78,143,0.08) 0%, transparent 70%)" }} />
                     <div className="relative">
                         <h2 className="text-3xl font-bold text-mg-silver mb-4 tracking-tight">
                             Ready to transform your receivables?

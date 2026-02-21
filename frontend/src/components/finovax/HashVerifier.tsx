@@ -35,10 +35,10 @@ export const HashVerifier = () => {
 
     const rv = result
         ? result.exists && result.financedBy
-            ? { bg: "rgba(248,113,113,0.08)", border: "rgba(248,113,113,0.28)", icon: ShieldAlert, iconColor: "#f87171", title: "Fraud Alert",        body: `Double financing detected. Previously funded by: ${result.financedBy}.` }
+            ? { bg: "rgba(220,38,38,0.08)",  border: "rgba(220,38,38,0.28)",  icon: ShieldAlert, iconColor: "#dc2626", title: "Fraud Alert",        body: `Double financing detected. Previously funded by: ${result.financedBy}.` }
             : result.exists
-            ? { bg: "rgba(52,211,153,0.08)",  border: "rgba(52,211,153,0.28)",  icon: ShieldCheck, iconColor: "#34d399", title: "Integrity Verified", body: "Invoice matched against the distributed ledger. No prior financing records found." }
-            : { bg: "rgba(251,191,36,0.08)",  border: "rgba(251,191,36,0.25)",  icon: ShieldAlert, iconColor: "#fbbf24", title: "Hash Not Found",     body: "This hash does not exist in the FInovaX audit trail. Verify the source document." }
+            ? { bg: "rgba(5,150,105,0.08)",   border: "rgba(5,150,105,0.28)",   icon: ShieldCheck, iconColor: "#059669", title: "Integrity Verified", body: "Invoice matched against the distributed ledger. No prior financing records found." }
+            : { bg: "rgba(217,119,6,0.08)",   border: "rgba(217,119,6,0.25)",   icon: ShieldAlert, iconColor: "#d97706", title: "Hash Not Found",     body: "This hash does not exist in the FInovaX audit trail. Verify the source document." }
         : null;
 
     return (
@@ -46,7 +46,7 @@ export const HashVerifier = () => {
             {/* Header */}
             <div className="px-6 py-4 border-b border-mg-lavender/10 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ background: "linear-gradient(135deg, #4a4e8f, #a490c2)", boxShadow: "0 0 10px rgba(74,78,143,0.35)" }}>
+                    style={{ background: "linear-gradient(135deg, #4a4e8f, #6b5ea0)", boxShadow: "0 0 8px rgba(74,78,143,0.22)" }}>
                     <Cpu className="w-4 h-4 text-white" />
                 </div>
                 <div>

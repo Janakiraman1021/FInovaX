@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.setItem("finovax-role", newRole);
         localStorage.setItem("finovax-token", `mock.jwt.finovax.${newRole}`);
         document.cookie = `finovax-role=${newRole}; path=/; max-age=86400`;
-        router.push(`/${newRole}`);
+        router.push(`/${newRole}/dashboard`);
     };
 
     const logout = () => {
