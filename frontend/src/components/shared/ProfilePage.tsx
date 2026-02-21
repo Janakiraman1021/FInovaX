@@ -154,9 +154,9 @@ export default function ProfilePage() {
         : null;
 
     const tabs: { id: Tab; label: string; icon: React.ElementType; show?: boolean }[] = [
-        { id: "personal",  label: "Personal",         icon: UserCircle2 },
-        { id: "business",  label: "Business Profile", icon: Building2,  show: role === "msme" },
-        { id: "security",  label: "Security",         icon: Lock },
+        { id: "personal" as const,  label: "Personal",         icon: UserCircle2 },
+        { id: "business" as const,  label: "Business Profile", icon: Building2,  show: role === "msme" },
+        { id: "security" as const,  label: "Security",         icon: Lock },
     ].filter(t => t.show !== false);
 
     return (
