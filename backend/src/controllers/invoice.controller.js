@@ -63,12 +63,6 @@ const createInvoice = async (req, res, next) => {
         // 1. Generate SHA-256 hash (fileHash - for document integrity)
         const invoiceHash = hashBuffer(fileBuffer);
 
-        // ✅ ACTION 1 CHECK: Reject duplicate fileHash (same file already uploaded)
-        const existingFile = await Invoice.findOne({ invoiceHash });
-        if (existingFile) {
-            return next(new AppError('This file has already been uploaded. Duplicate file detected.', 409, 'DUPLICATE_FILE_HASH'));
-        }
-
         // 2. Generate Receivable Fingerprint (business obligation identity)
         const receivableFingerprint = generateReceivableFingerprint({
             sellerGSTIN,
@@ -78,26 +72,45 @@ const createInvoice = async (req, res, next) => {
             invoiceDate: parsedInvoiceDate
         });
 
-        // ❌ ACTION 1 RULE: Do NOT check financing status on upload
-        // MSMEs can upload even if the receivable is financed elsewhere
-        // Only file uniqueness matters here
-
-        // 3. Check for duplicate lender submission (if lender is selected)
-        if (submittedTo) {
+        // ✅ ACTION 1 & 4 RULE: Conditional Validation
+        if (!submittedTo) {
+            // Initial Upload (Action 1): Check global fileHash
+            const existingFile = await Invoice.findOne({ invoiceHash });
+            if (existingFile) {
+                return next(new AppError('This file has already been uploaded. Duplicate file detected.', 409, 'DUPLICATE_FILE_HASH'));
+            }
+        } else {
+            // Upload + Submit (Action 4): Bypass global checks to allow Discovery
+            // Action 3: Only block if same lender re-submission
             const existingSubmission = await LenderSubmission.findOne({
                 receivableFingerprint,
                 lenderId: submittedTo
             });
+
             if (existingSubmission) {
-                return next(new AppError(
-                    'You have already submitted this business obligation to this lender',
-                    409,
-                    'DUPLICATE_LENDER_SUBMISSION'
-                ));
+                // Check if the specific file was also the same for this lender
+                const duplicateInvoiceForLender = await Invoice.findOne({
+                    receivableFingerprint,
+                    invoiceHash,
+                    submittedTo: { $in: [submittedTo] }
+                });
+
+                if (duplicateInvoiceForLender) {
+                    const { updateTrustScore } = require('../services/trust.service');
+                    await updateTrustScore(req.user.id, 'DUPLICATE_ATTEMPT', {
+                        reason: 'same_lender_duplicate_upload',
+                        lenderId: submittedTo
+                    });
+                    return next(new AppError(
+                        'You have already submitted this specific invoice file to this lender',
+                        409,
+                        'DUPLICATE_SUBMISSION_SAME_LENDER'
+                    ));
+                }
             }
         }
 
-        // 4. Upload to IPFS
+        // 3. Upload to IPFS
         const ipfsResult = await uploadToIPFS(fileBuffer, req.file.originalname);
 
         // 5. Anchor to Blockchain (Informational Registration)
@@ -295,10 +308,15 @@ const submitInvoice = async (req, res, next) => {
         });
 
         if (existingSubmission) {
+            const { updateTrustScore } = require('../services/trust.service');
+            await updateTrustScore(req.user.id, 'DUPLICATE_ATTEMPT', {
+                reason: 'same_lender_duplicate_submission',
+                lenderId: lenderId
+            });
             return next(new AppError(
                 'You have already submitted this business obligation to this lender',
                 409,
-                'DUPLICATE_LENDER_SUBMISSION'
+                'DUPLICATE_SUBMISSION_SAME_LENDER'
             ));
         }
 

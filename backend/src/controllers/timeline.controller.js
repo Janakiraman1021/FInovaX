@@ -71,4 +71,58 @@ const getInvoiceTimeline = async (req, res, next) => {
     }
 };
 
-module.exports = { getInvoiceTimeline };
+/**
+ * GET /api/v1/timeline/receivable/:fingerprint
+ * Aggregate trust events across all invoices for a specific receivable obligation.
+ */
+const getReceivableTimeline = async (req, res, next) => {
+    try {
+        const { fingerprint } = req.params;
+
+        // Aggregate 1: Audit Logs for this fingerprint
+        const logs = await AuditLog.find({ receivableFingerprint: fingerprint })
+            .select('action createdAt details')
+            .sort({ createdAt: 1 });
+
+        // Aggregate 2: Assurance Reports for this fingerprint
+        const reports = await AssuranceReport.find({ receivableFingerprint: fingerprint })
+            .select('status usageCategory createdAt acknowledgedAt');
+
+        // Transform into unified timeline
+        const timeline = logs.map(log => ({
+            type: 'SYSTEM_EVENT',
+            event: log.action,
+            timestamp: log.createdAt,
+            details: log.details
+        }));
+
+        reports.forEach(report => {
+            timeline.push({
+                type: 'ASSURANCE_REPORT',
+                event: 'REPORT_SUBMITTED',
+                timestamp: report.createdAt,
+                details: { category: report.usageCategory }
+            });
+            if (report.status === 'ACKNOWLEDGED') {
+                timeline.push({
+                    type: 'ASSURANCE_REPORT',
+                    event: 'REPORT_ACKNOWLEDGED',
+                    timestamp: report.acknowledgedAt,
+                    details: {}
+                });
+            }
+        });
+
+        // Sort by time
+        timeline.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        return sendResponse(res, 200, {
+            receivableFingerprint: fingerprint,
+            timeline
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { getInvoiceTimeline, getReceivableTimeline };

@@ -196,10 +196,42 @@ const getMyTrustScore = async (req, res, next) => {
   }
 };
 
+const getMSMETrustScore = async (req, res, next) => {
+  try {
+    const { msmeId } = req.params;
+    const profile = await MSMEProfile.findOne({ userId: msmeId });
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: "Profile not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        trustScore: profile.trustScore || 100,
+        status: profile.trustScore >= 80 ? 'EXCELLENT' : (profile.trustScore >= 50 ? 'STABLE' : 'RISKY')
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching MSME trust score:", error);
+    if (next) {
+      next(error);
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch trust score",
+      });
+    }
+  }
+};
+
 module.exports = {
   getMSMEProfile,
   createOrUpdateMSMEProfile,
   updateProfileField,
   deleteMSMEProfile,
   getMyTrustScore,
+  getMSMETrustScore,
 };

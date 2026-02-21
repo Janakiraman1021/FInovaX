@@ -207,6 +207,12 @@ const financeInvoice = async (req, res, next) => {
                 ]);
 
                 // Log the duplicate attempt for audit (ACTION 6)
+                const { updateTrustScore } = require('../services/trust.service');
+                await updateTrustScore(invoice.uploadedBy, 'INVOICE_BLOCKED', {
+                    reason: 'receivable_already_financed_on_chain',
+                    fingerprint: invoice.receivableFingerprint
+                });
+
                 await createAuditLog({
                     action: 'DUPLICATE_FINANCING_ATTEMPT',
                     performedBy: req.user.id,
@@ -239,7 +245,7 @@ const financeInvoice = async (req, res, next) => {
             console.error('Blockchain finance marking failed:', bcError.message);
 
             // ACTION 6: Catch specific revert for already financed
-            if (bcError.message.includes('already financed') || 
+            if (bcError.message.includes('already financed') ||
                 bcError.message.includes('AlreadyFinanced') ||
                 bcError.message.includes('ALREADY_FINANCED')) {
 
@@ -259,6 +265,12 @@ const financeInvoice = async (req, res, next) => {
                 });
 
                 // Update local records
+                const { updateTrustScore } = require('../services/trust.service');
+                await updateTrustScore(invoice.uploadedBy, 'DUPLICATE_ATTEMPT', {
+                    reason: 'blockchain_revert_already_financed',
+                    fingerprint: invoice.receivableFingerprint
+                });
+
                 await Promise.all([
                     Invoice.updateMany(
                         { receivableFingerprint: invoice.receivableFingerprint },
