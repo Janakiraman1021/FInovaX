@@ -53,7 +53,7 @@ The frontend is a Next.js 14 app with role-based dashboards for each participant
 
 
 <p align="center">
-  <img src="./architecture.png" alt="Architecture Diagram" width="800" />
+  <img src="./Architecture.png" alt="Architecture Diagram" width="800" />
 </p>
 
 ---
