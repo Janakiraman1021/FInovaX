@@ -1,5 +1,7 @@
 # OpenFlow — Blockchain-Powered Invoice Financing Platform
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
+
 OpenFlow is a production-grade fintech platform that enables MSMEs to upload invoices, register them on the Ethereum Sepolia blockchain, store documents on IPFS, and obtain financing from verified lenders — all with a cryptographically-linked, tamper-proof audit trail.
 
 > **UI Principle**: *OneFlow surfaces trust signals without interfering with lending decisions.*
@@ -34,6 +36,7 @@ OpenFlow is a production-grade fintech platform that enables MSMEs to upload inv
 - [User Roles](#user-roles)
 - [Security](#security)
 - [Contributing](#contributing)
+- [License](#license)
 
 ---
 
@@ -569,6 +572,13 @@ Query params: `page`, `limit`, `action`, `userId`
 2. Follow the existing code style (CommonJS for backend, TypeScript strict mode for frontend).
 3. Write clear commit messages.
 4. Open a pull request with a description of the changes and any relevant test output.
+
+---
+
+## License
+
+This project is licensed under the **Apache License 2.0**.
+See the [LICENSE](./LICENSE) file for the full license text.
 
 ---
 
