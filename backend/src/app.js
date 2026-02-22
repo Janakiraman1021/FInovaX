@@ -15,7 +15,14 @@ const app = express();
 // --------------- Global Middleware ---------------
 app.use(requestIdMiddleware);
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+    origin: [
+        'https://openflow-six.vercel.app',
+        'http://localhost:3000',
+        'http://localhost:3001'
+    ],
+    credentials: true
+}));
 app.use(
     rateLimit({
         windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
