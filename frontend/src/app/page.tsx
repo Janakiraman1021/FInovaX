@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
 import { Shield, ArrowRight, Lock, PieChart, Zap, GitBranch, CheckCircle } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 const features = [
     { icon: Shield,    title: "Blockchain Verification",  desc: "Every invoice is hashed and sealed on Polygon ETH Sepolia — tamper-proof by design."     },
@@ -34,14 +35,14 @@ export default function LandingPage() {
     return (
         <div className="min-h-screen text-mg-silver overflow-hidden" style={{ background: "var(--mg-base)" }}>
             {/* ── Nav bar ── */}
-            <header className="mg-navbar sticky top-0 z-50 h-14 px-8 flex items-center justify-between">
+            <header className="mg-navbar fixed top-0 left-0 right-0 z-50 h-14 px-8 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center"
                         style={{ background: "linear-gradient(135deg, #4a4e8f, #6b5ea0)", boxShadow: "0 0 12px rgba(74,78,143,0.25)" }}>
                         <Shield className="w-3.5 h-3.5 text-white" />
                     </div>
                     <span className="font-bold text-mg-silver tracking-tight">
-                        Open<span className="text-mg-lavender">Flow</span>
+                        One<span className="text-mg-lavender">Flow</span>
                     </span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -53,42 +54,24 @@ export default function LandingPage() {
             </header>
 
             {/* ── Hero ── */}
-            <section className="relative pt-28 pb-20 px-8 text-center max-w-5xl mx-auto">
-                {/* Ambient glow behind hero */}
-                <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full blur-[120px] opacity-30"
-                    style={{ background: "radial-gradient(ellipse, rgba(74,78,143,0.22) 0%, transparent 70%)" }} />
+            <section className="relative w-full" style={{ height: "100vh" }}>
+                {/* Ambient glow */}
+                <div className="pointer-events-none absolute inset-0"
+                    style={{ background: "radial-gradient(ellipse 70% 50% at 50% 50%, rgba(74,78,143,0.18) 0%, transparent 70%)" }} />
 
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.55 }}
-                    className="relative"
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.7, ease: "easeOut" }}
+                    className="relative w-full h-full"
                 >
-                    <span className="mg-pill mb-6 inline-flex">
-                        <span className="w-1.5 h-1.5 rounded-full bg-mg-lavender animate-pulse" />
-                        Built on Polygon ETH Sepolia · IPFS · Smart Contracts
-                    </span>
-
-                    <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.08] mb-6 text-mg-silver">
-                        Invoice Finance<br />
-                        <span className="mg-gradient-text">Reimagined.</span>
-                    </h1>
-
-                    <p className="text-lg text-mg-muted max-w-2xl mx-auto mb-10 leading-relaxed">
-                        OneFlow connects MSMEs and lenders on a trustless blockchain layer —
-                        reducing fraud, accelerating liquidity, and bringing full transparency to trade finance.
-                    </p>
-
-                    <div className="flex items-center justify-center gap-4 flex-wrap">
-                        <Link href="/login" className="mg-btn-primary gap-2 text-sm">
-                            Launch App
-                            <ArrowRight className="w-4 h-4" />
-                        </Link>
-                        <Link href="#features"
-                            className="mg-btn-ghost border border-mg-lavender/20 text-mg-muted hover:text-mg-silver text-sm px-5 py-2.5 rounded-lg">
-                            Learn more
-                        </Link>
-                    </div>
+                    <Image
+                        src="/logo.png"
+                        alt="Oneflow"
+                        fill
+                        priority
+                        className="object-cover"
+                    />
                 </motion.div>
             </section>
 
