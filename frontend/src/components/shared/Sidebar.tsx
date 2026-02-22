@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import {
     LayoutDashboard, FileUp, FileText, History, User, CheckCircle,
-    Clock, XCircle, AlertTriangle, Search, Layers, DollarSign,
+    Clock, XCircle, AlertTriangle, Search, Layers, IndianRupee,
     FileSearch, Flag, CreditCard, Activity, Shield, ShieldCheck,
     BarChart3, ClipboardList, Hourglass, LogOut, X,
 } from "lucide-react";
@@ -61,7 +61,7 @@ const menuItems: Record<string, NavSection[]> = {
             section: "Operations",
             items: [
                 { label: "Verify Hash",     icon: Search,          href: "/lender/verify-hash" },
-                { label: "Disbursement",    icon: DollarSign,      href: "/lender/disbursement"},
+                { label: "Disbursement",    icon: IndianRupee,      href: "/lender/disbursement"},
                 { label: "Report Fraud",    icon: Flag,            href: "/lender/report-fraud"},
             ],
         },

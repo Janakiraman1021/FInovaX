@@ -383,8 +383,8 @@ export interface AssuranceReport {
     description?: string;
     attachments?: string[];
     status: 'SUBMITTED' | 'ACKNOWLEDGED';
-    acknowledgedAt?: string;
-    createdAt: string;
+    acknowledgedAt?: string | Date | null;
+    createdAt: string | Date;
 }
 
 export const trustAPI = {
@@ -418,7 +418,8 @@ export const trustAPI = {
 
     /** POST /api/v1/trust/assurance/submit — submit assurance report (MSME) */
     submitAssuranceReport: (token: string, payload: { invoiceId: string; usageCategory: string; description?: string }) =>
-        apiRequest<{ success: boolean; message: string; data: AssuranceReport }>(
+        apiRequest<{ success: boolean; message: string; data: { report: AssuranceReport } }>(
+
             "/api/v1/trust/assurance/submit",
             {
                 method: "POST",
@@ -429,7 +430,8 @@ export const trustAPI = {
 
     /** POST /api/v1/trust/assurance/acknowledge — acknowledge assurance report (Lender) */
     acknowledgeAssuranceReport: (token: string, payload: { reportId: string }) =>
-        apiRequest<{ success: boolean; message: string; data: AssuranceReport }>(
+        apiRequest<{ success: boolean; message: string; data: { report: AssuranceReport } }>(
+
             "/api/v1/trust/assurance/acknowledge",
             {
                 method: "POST",
@@ -440,7 +442,8 @@ export const trustAPI = {
 
     /** GET /api/v1/trust/assurance/invoice/:invoiceId — get assurance report for invoice */
     getAssuranceReport: (token: string, invoiceId: string) =>
-        apiRequest<{ success: boolean; data: AssuranceReport | null }>(
+        apiRequest<{ success: boolean; data: { report: AssuranceReport | null } }>(
+
             `/api/v1/trust/assurance/invoice/${encodeURIComponent(invoiceId)}`,
             { headers: { Authorization: `Bearer ${token}` } }
         ),

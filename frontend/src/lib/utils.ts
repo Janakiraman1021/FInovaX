@@ -27,8 +27,18 @@ export function formatCurrency(amount: number): string {
     }).format(amount);
 }
 
-export function formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString("en-US", {
+export function formatDate(dateString: string | null | undefined): string {
+    const date = new Date(dateString ?? "");
+    if (isNaN(date.getTime())) {
+        return new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    }
+    return date.toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",

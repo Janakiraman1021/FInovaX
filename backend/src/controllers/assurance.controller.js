@@ -70,7 +70,7 @@ const acknowledgeReport = async (req, res, next) => {
         if (!report) return next(new AppError('Report not found', 404));
 
         // Only the financing lender can acknowledge
-        if (report.lenderId.toString() !== req.user.id.toString()) {
+        if (report.lenderId && report.lenderId.toString() !== req.user.id.toString()) {
             return next(new AppError('Only the financing lender can acknowledge this report', 403));
         }
 

@@ -4,8 +4,19 @@ import { useEffect, useState } from "react";
 import { trustAPI, AssuranceReport, APIError } from "@/lib/api";
 import { motion } from "framer-motion";
 import { FileCheck, CheckCircle, Clock, Loader2, AlertCircle } from "lucide-react";
-import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
+
+const FORMAT_OPTS: Intl.DateTimeFormatOptions = {
+    year: "numeric", month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit",
+};
+
+const safeFormatDate = (val: string | Date | null | undefined): string => {
+    const now = new Date().toLocaleDateString("en-US", FORMAT_OPTS);
+    if (!val) return now;
+    const d = new Date(val as string);
+    return isNaN(d.getTime()) ? now : d.toLocaleDateString("en-US", FORMAT_OPTS);
+};
 
 interface AssuranceReportViewerProps {
     invoiceId: string;
@@ -37,7 +48,7 @@ export const AssuranceReportViewer = ({ invoiceId, canAcknowledge = false, class
 
         try {
             const res = await trustAPI.getAssuranceReport(token, invoiceId);
-            setReport(res.data);
+            setReport(res.data.report);
         } catch (err) {
             if (err instanceof APIError && err.statusCode === 404) {
                 setError("No assurance report submitted");
@@ -168,12 +179,12 @@ export const AssuranceReportViewer = ({ invoiceId, canAcknowledge = false, class
                 <div className="pt-4 border-t border-mg-lavender/10 space-y-2">
                     <div className="flex items-center justify-between text-xs">
                         <span className="text-mg-dim">Submitted</span>
-                        <span className="font-mono text-mg-muted">{formatDate(report.createdAt)}</span>
+                        <span className="font-mono text-mg-muted">{safeFormatDate(report.createdAt)}</span>
                     </div>
-                    {isAcknowledged && report.acknowledgedAt && (
+                    {isAcknowledged && (
                         <div className="flex items-center justify-between text-xs">
                             <span className="text-mg-dim">Acknowledged</span>
-                            <span className="font-mono text-mg-muted">{formatDate(report.acknowledgedAt)}</span>
+                            <span className="font-mono text-mg-muted">{safeFormatDate(report.acknowledgedAt)}</span>
                         </div>
                     )}
                 </div>

@@ -14,7 +14,9 @@ const app = express();
 
 // --------------- Global Middleware ---------------
 app.use(requestIdMiddleware);
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 app.use(cors({
     origin: [
         'https://openflow-six.vercel.app',

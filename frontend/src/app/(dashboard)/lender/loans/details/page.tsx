@@ -234,9 +234,9 @@ export default function LenderInvoiceDetailsPage() {
                 </motion.div>
 
                 {/* Timeline */}
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                {/* <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                     <InvoiceTimeline invoiceId={invoice.invoiceId} />
-                </motion.div>
+                </motion.div> */}
 
                 {/* Assurance Report */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
