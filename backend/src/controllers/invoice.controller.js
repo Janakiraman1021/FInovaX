@@ -84,29 +84,8 @@ const createInvoice = async (req, res, next) => {
         let invoice = null;
         let isExistingInvoice = false;
 
-        // 🛡️ RULE 1: SAME FILE + DIFFERENT RECEIVABLE FIELDS (BLOCK)
-        // Enforcement must be global to ensure document truth.
+        // Lookup existing file record (used for duplicate upload checks below)
         const globalExistingFile = await Invoice.findOne({ invoiceHash });
-        if (globalExistingFile) {
-            if (globalExistingFile.receivableFingerprint !== receivableFingerprint) {
-                // 🛡️ INTELLIGENCE: Trigger soft alert for inconsistency (Upgrade 2)
-                const { triggerRiskAlert } = require('../services/intelligence.service');
-                const Receivable = require('../models/Receivable');
-
-                await triggerRiskAlert('INCONSISTENT_BEHAVIOR', 'WARNING', 'MSME', req.user.id);
-                await Receivable.findOneAndUpdate(
-                    { receivableFingerprint },
-                    { $set: { inconsistentDataDetected: true } },
-                    { upsert: true }
-                );
-
-                return next(new AppError(
-                    "Invoice file does not match declared receivable details",
-                    400,
-                    "INCONSISTENT_INVOICE_DATA"
-                ));
-            }
-        }
 
         // Logic for handling upload/submission based on context
         if (!submittedTo) {
