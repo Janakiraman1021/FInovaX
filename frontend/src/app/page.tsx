@@ -41,7 +41,7 @@ export default function LandingPage() {
                         <Shield className="w-3.5 h-3.5 text-white" />
                     </div>
                     <span className="font-bold text-mg-silver tracking-tight">
-                        Fino<span className="text-mg-lavender">vaX</span>
+                        Open<span className="text-mg-lavender">Flow</span>
                     </span>
                 </div>
                 <div className="flex items-center gap-3">
