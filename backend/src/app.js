@@ -18,6 +18,7 @@ app.use(helmet());
 app.use(cors({
     origin: [
         'https://openflow-six.vercel.app',
+        'https://oneflow1.vercel.app',
         'http://localhost:3000',
         'http://localhost:3001'
     ],
