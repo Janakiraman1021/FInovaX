@@ -64,6 +64,9 @@ app.get('/health', (_req, res) => res.redirect('/api/v1/health'));
 
 // MSME Profile Routes
 app.use("/api/msme-profile", msmeProfileRoutes);
+app.use("/", (req, res) => {
+    res.json({ message: "Welcome to FInovaX API" });
+});
 
 // --------------- 404 Handler ---------------
 app.use((_req, res) => {
