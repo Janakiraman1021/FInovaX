@@ -51,25 +51,10 @@ The frontend is a Next.js 14 app with role-based dashboards for each participant
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────┐
-│                    Next.js Frontend                  │
-│  Landing · Auth · MSME Dashboard · Lender Dashboard  │
-│              Auditor Dashboard · Profile             │
-└────────────────────────┬─────────────────────────────┘
-                         │ REST (JWT Bearer)
-┌────────────────────────▼─────────────────────────────┐
-│              Express.js Backend (Node)               │
-│  Auth · Invoices · Lender · Audit · MSME Profile     │
-│  Rate Limiting · Helmet · RBAC · Request-ID          │
-└─────────┬──────────────┬────────────────┬────────────┘
-          │              │                │
-    ┌─────▼────┐  ┌──────▼──────┐  ┌─────▼──────┐
-    │ MongoDB  │  │    IPFS     │  │  Ethereum  │
-    │ (Mongoose│  │   Pinata    │  │  Sepolia   │
-    │  ODM)    │  │   Gateway   │  │  (ethers)  │
-    └──────────┘  └─────────────┘  └────────────┘
-```
+
+<p align="center">
+  <img src="./architecture.png" alt="Architecture Diagram" width="800" />
+</p>
 
 ---
 
@@ -234,6 +219,11 @@ OpenFlow/
 ## Features
 
 ### Invoice Lifecycle
+
+<p align="center">
+  <img src="./workflow.png" alt="Invoice Workflow" width="800" />
+</p>
+
 - **Upload** — MSME uploads a PDF (≤ 10 MB). Backend computes a SHA-256 hash, uploads to IPFS via Pinata, and registers the hash on-chain via `InvoiceRegistry.registerInvoice()`.
 - **Submit to Lender** — MSME selects a lender; the backend creates a `LenderSubmission` record and transitions invoice status to `SUBMITTED`.
 - **Verify** — Lender queries MongoDB and the blockchain to confirm an invoice is registered and not yet financed.
